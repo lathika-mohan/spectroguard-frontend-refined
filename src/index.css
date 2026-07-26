@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+@theme {
+  /* Type */
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Core surfaces */
+  --color-void: #08090b;
+  --color-panel: #101317;
+  --color-panel-raised: #161a1f;
+  --color-hairline: #23282f;
+
+  /* Text */
+  --color-ink: #e7eaee;
+  --color-ink-dim: #8b929c;
+  --color-ink-faint: #565d67;
+
+  /* Signal colors — the vocabulary of the system's state */
+  --color-live: #2fd4c8;       /* cold cyan-teal: camera is live / nominal */
+  --color-live-dim: #163936;
+  --color-alarm: #ff5a52;      /* alert red */
+  --color-alarm-dim: #3a1613;
+  --color-warn: #f0a734;       /* amber: degraded / restart / warning */
+  --color-warn-dim: #362a10;
+  --color-evidence: #8b7bff;   /* violet: forensic / signed / chain-of-custody */
+  --color-evidence-dim: #221d3d;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-hairline);
+  }
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    background-color: var(--color-void);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+  }
+}
+
+@layer utilities {
+  .font-display { font-family: var(--font-display); }
+  .font-mono { font-family: var(--font-mono); }
+
+  .scanlines {
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.025) 0px,
+      rgba(255, 255, 255, 0.025) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.25; }
+  }
+  .animate-pulse-dot {
+    animation: pulse-dot 1.6s ease-in-out infinite;
+  }
+
+  @keyframes sweep {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+  .animate-sweep {
+    animation: sweep 3.2s linear infinite;
+  }
+
+  @keyframes noise-shift {
+    0% { background-position: 0 0; }
+    100% { background-position: 137px 71px; }
+  }
+  .animate-noise {
+    animation: noise-shift 8s steps(8) infinite;
+  }
+
+  @keyframes blink-rec {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.15; }
+  }
+  .animate-blink-rec {
+    animation: blink-rec 1s step-start infinite;
+  }
+
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .animate-marquee {
+    animation: marquee 22s linear infinite;
+  }
+}
