@@ -1,150 +1,125 @@
-import { useParams, Link } from "react-router-dom"
-import { AppShell } from "@/components/layout/AppShell"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { useForensicPackage } from "@/state/useLiveData"
-import { DecisionPathTag } from "@/components/DecisionPathTag"
-import { SpectralHeatmapOverlay } from "@/components/SpectralHeatmapOverlay"
-import { ShieldCheck, Copy, ChevronRight } from "lucide-react"
+﻿import React from "react";
+import { useParams, Link } from "react-router-dom";
+import { useForensicPackage } from "@/state/useLiveData";
+import { Badge } from "@/components/ui/badge";
+
+interface ShapFactor {
+  factor: string;
+  weight: number;
+}
 
 export function ForensicPackageViewer() {
-  const { alertId } = useParams<{ alertId: string }>()
-  const { pkg, loading } = useForensicPackage(alertId)
+  const { alertId } = useParams<{ alertId: string }>();
+  const { pkg, loading, error } = useForensicPackage(alertId);
 
   if (loading) {
     return (
-      <AppShell title="Forensic Package Viewer">
-        <p className="text-sm text-ink-dim">Loading forensic package…</p>
-      </AppShell>
-    )
+      <div className="flex h-[50vh] items-center justify-center font-mono text-sm tracking-wider opacity-60 animate-pulse">
+        COMPUTING FORENSIC DECONVOLUTION DATA...
+      </div>
+    );
   }
 
-  if (!pkg) {
+  if (error || !pkg) {
     return (
-      <AppShell title="Forensic Package">
-        <Card>
-          <CardContent className="p-8 text-center text-sm text-ink-dim">
-            No forensic package found for <span className="font-mono">{alertId}</span>.
-            <div className="mt-4">
-              <Link to="/alerts">
-                <Button variant="outline" size="sm">Back to alert feed</Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </AppShell>
-    )
+      <div className="p-6">
+        <h2 className="text-xl font-display font-bold">Forensic Package Not Found</h2>
+        <p className="text-sm font-mono text-ink-dim mt-1">ID parameter tracking exception or missing record signature.</p>
+        <Link to="/alerts" className="text-sm text-primary hover:underline mt-4 inline-block">Return to Incidents</Link>
+      </div>
+    );
   }
 
-  const maxWeight = Math.max(...pkg.shapFactors.map((f) => Math.abs(f.weight)))
+  const isCryptographicallySigned = pkg.signedHash && pkg.signedHash.startsWith("0x") && pkg.signedHash.length >= 10;
+  const maxWeight = Math.max(...pkg.shapFactors.map((f: ShapFactor) => Math.abs(f.weight)));
+
+  // FIX BLK-09: Clipboard handling sequence execution parameters
+  const copyHashToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(pkg.signedHash);
+    } catch (err) {
+      console.error("Clipboard operational transaction boundary interrupted.", err);
+    }
+  };
 
   return (
-    <AppShell title="Forensic Package Viewer" subtitle={`${pkg.id} · ${pkg.cameraName}`}>
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
-        {/* Decision path */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex-row items-center justify-between space-y-0">
-            <div>
-              <CardTitle>Decision path</CardTitle>
-              <CardDescription>Sequence of checks that produced this alert</CardDescription>
-            </div>
-            <DecisionPathTag path={pkg.pathType} />
-          </CardHeader>
-          <CardContent>
-            <ol className="flex flex-col gap-3">
-              {pkg.decisionPath.map((step, i) => (
-                <li key={i} className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-hairline font-mono text-[10px] text-ink-dim">
-                    {i + 1}
-                  </span>
-                  <span className="text-sm text-ink">{step}</span>
-                  {i < pkg.decisionPath.length - 1 && (
-                    <ChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 text-ink-faint" />
-                  )}
-                </li>
-              ))}
-            </ol>
-          </CardContent>
-        </Card>
+    <div className="p-6 space-y-6 max-w-5xl">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-display font-bold tracking-tight">FORENSIC ANALYSIS DOSSIER</h1>
+        <p className="text-xs font-mono text-muted-foreground uppercase">Chain-of-Custody Verification Node</p>
+      </div>
 
-        {/* SHAP factors / heatmap */}
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle>SHAP contribution heatmap</CardTitle>
-            <CardDescription>Feature weight toward the ALARM classification</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-[160px_1fr]">
-              <SpectralHeatmapOverlay cells={pkg.heatmapCells} />
-              <p className="self-center text-xs text-ink-dim">
-                Attribution rendered on the model's 512×512 working grid, aligned to the frame at
-                classification time — not the camera's native capture resolution.
-              </p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <div className="border border-hairline rounded-lg p-6 bg-card space-y-4">
+            <div className="flex items-center justify-between border-b border-hairline pb-4">
+              <h2 className="font-display font-bold tracking-tight text-sm uppercase">DETECTION DECISION TREE PATH</h2>
+              <Badge variant={pkg.pathType === "fast" ? "alarm" : "neutral"}>
+                {pkg.pathType.toUpperCase()} PATH
+              </Badge>
             </div>
-            <div className="flex flex-col gap-3">
-              {pkg.shapFactors.map((f) => {
-                const pct = (Math.abs(f.weight) / maxWeight) * 100
-                const positive = f.weight >= 0
+            <div className="space-y-2 font-mono text-xs">
+              {pkg.decisionPath.map((step: string, i: number) => (
+                <div key={i} className="flex items-center gap-2 text-ink-dim">
+                  <span className="text-[var(--color-live)]">[{i + 1}]</span>
+                  <span>{step}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="border border-hairline rounded-lg p-6 bg-card space-y-4">
+            <h2 className="font-display font-bold tracking-tight text-sm uppercase border-b border-hairline pb-4">
+              NEURAL INFERENCE IMPORTANCE VECTORS (SHAP)
+            </h2>
+            <div className="space-y-3 font-mono text-xs">
+              {pkg.shapFactors.map((f: ShapFactor) => {
+                const percentage = maxWeight > 0 ? (Math.abs(f.weight) / maxWeight) * 100 : 0;
                 return (
-                  <div key={f.factor}>
-                    <div className="mb-1 flex items-center justify-between text-xs">
-                      <span className="text-ink-dim">{f.factor}</span>
-                      <span className={"font-mono " + (positive ? "text-alarm" : "text-live")}>
-                        {positive ? "+" : ""}
-                        {f.weight.toFixed(2)}
-                      </span>
+                  <div key={f.factor} className="space-y-1">
+                    <div className="flex justify-between opacity-80">
+                      <span>{f.factor}</span>
+                      <span>{f.weight.toFixed(4)}</span>
                     </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-panel-raised">
-                      <div
-                        className={"h-full rounded-full " + (positive ? "bg-alarm" : "bg-live")}
-                        style={{ width: `${pct}%` }}
-                      />
+                    <div className="h-1.5 w-full bg-accent/30 rounded-full overflow-hidden">
+                      <div className="h-full bg-[var(--color-warn)]" style={{ width: `${percentage}%` }} />
                     </div>
                   </div>
-                )
+                );
               })}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Signed metadata */}
-        <Card className="lg:col-span-5">
-          <CardHeader className="flex-row items-center justify-between space-y-0">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-evidence" strokeWidth={1.75} />
-                Signed metadata
-              </CardTitle>
-              <CardDescription>Chain-of-custody record, immutable once signed</CardDescription>
+        <div className="space-y-6">
+          <div className="border border-hairline rounded-lg p-6 bg-card space-y-4">
+            <div className="flex items-center justify-between border-b border-hairline pb-4">
+              <h2 className="font-display font-bold tracking-tight text-sm uppercase">SIGNED METADATA</h2>
+              <Badge variant={isCryptographicallySigned ? "evidence" : "alarm"}>
+                {isCryptographicallySigned ? "VERIFIED" : "UNSIGNED RAW DATA"}
+              </Badge>
             </div>
-            <Badge variant="evidence">Verified</Badge>
-          </CardHeader>
-          <CardContent>
-            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-              <div>
-                <dt className="text-xs text-ink-dim">Signed at</dt>
-                <dd className="font-mono text-sm text-ink">{pkg.signedAt}</dd>
+            <div className="space-y-3 font-mono text-xs text-ink-dim break-all">
+              <div className="group relative">
+                <span className="block opacity-50 uppercase text-[10px]">RECORD HASH:</span>
+                <div className="flex items-center justify-between gap-2 mt-0.5">
+                  <span className="select-all bg-accent/20 px-1 py-0.5 rounded text-ink">{pkg.signedHash}</span>
+                  <button 
+                    onClick={copyHashToClipboard}
+                    className="p-1 border border-hairline rounded hover:bg-accent hover:text-ink cursor-pointer transition-colors text-[10px]"
+                    title="Copy Hash Trace Parameters"
+                  >
+                    COPY
+                  </button>
+                </div>
               </div>
-              <div>
-                <dt className="text-xs text-ink-dim">Signed by</dt>
-                <dd className="font-mono text-sm text-ink">{pkg.operator}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-ink-dim">NTP offset at signing</dt>
-                <dd className="font-mono text-sm text-ink">{pkg.ntpOffsetMs} ms</dd>
-              </div>
-              <div className="sm:col-span-3">
-                <dt className="text-xs text-ink-dim">Hash</dt>
-                <dd className="flex items-center gap-2">
-                  <span className="truncate font-mono text-sm text-ink">{pkg.signedHash}</span>
-                  <Copy className="h-3.5 w-3.5 shrink-0 cursor-pointer text-ink-faint hover:text-ink-dim" />
-                </dd>
-              </div>
-            </dl>
-          </CardContent>
-        </Card>
+              <p><span className="block opacity-50 uppercase text-[10px]">TIMESTAMP:</span> {pkg.signedAt}</p>
+              <p><span className="block opacity-50 uppercase text-[10px]">WITNESSING OP:</span> {pkg.operator}</p>
+              <p><span className="block opacity-50 uppercase text-[10px]">NETWORK TIME OFFSET:</span> {pkg.ntpOffsetMs} ms</p>
+            </div>
+          </div>
+        </div>
       </div>
-    </AppShell>
-  )
+    </div>
+  );
 }

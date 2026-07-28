@@ -1,55 +1,47 @@
-import { NavLink } from "react-router-dom"
-import { cn } from "@/lib/utils"
-import {
-  LayoutGrid,
-  Siren,
-  FolderSearch,
-  HeartPulse,
-  SlidersHorizontal,
-  ShieldCheck,
-} from "lucide-react"
-
-const items = [
-  { to: "/dashboard", label: "Live Grid", icon: LayoutGrid },
-  { to: "/alerts", label: "Alert Feed", icon: Siren },
-  { to: "/forensics/evt-88213", label: "Forensics", icon: FolderSearch },
-  { to: "/health", label: "Worker Health", icon: HeartPulse },
-  { to: "/settings", label: "Thresholds", icon: SlidersHorizontal },
-]
+﻿import React from "react";
+import { NavLink } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
 export function Sidebar() {
+  const navItems = [
+    { to: "/dashboard", label: "MONITORING MATRIX" },
+    { to: "/alerts", label: "FORENSIC INCIDENTS" }, // FIX: Replaced hardcoded dynamic route /forensics/evt-88213
+    { to: "/health", label: "NODE STATUS" },
+    { to: "/settings", label: "CALIBRATION" },
+  ];
+
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-hairline bg-panel md:flex">
-      <div className="flex items-center gap-2 px-5 py-5">
-        <ShieldCheck className="h-5 w-5 text-live" strokeWidth={1.75} />
-        <span className="font-display text-sm font-semibold tracking-wide text-ink">
-          SENTRY<span className="text-live">SOC</span>
-        </span>
+    <aside className="w-64 border-r border-hairline bg-panel flex flex-col justify-between p-4 min-h-screen">
+      <div className="space-y-6">
+        <div className="flex items-center gap-2 px-2">
+          <div className="h-3 w-3 rounded-full bg-[var(--color-live)] animate-pulse" />
+          <span className="font-display font-bold tracking-wider text-sm">SPECTRAGUARD</span>
+        </div>
+        
+        <nav className="flex flex-col gap-1">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                cn(
+                  "px-3 py-2 text-xs font-mono tracking-wider rounded transition-colors uppercase",
+                  isActive
+                    ? "bg-accent text-ink"
+                    : "text-ink-dim hover:bg-accent/50 hover:text-ink"
+                )
+              }
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
       </div>
-      <nav className="flex-1 space-y-1 px-3">
-        {items.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                isActive
-                  ? "bg-panel-raised text-ink"
-                  : "text-ink-dim hover:bg-panel-raised/60 hover:text-ink"
-              )
-            }
-          >
-            <Icon className="h-4 w-4" strokeWidth={1.75} />
-            {label}
-          </NavLink>
-        ))}
-      </nav>
-      <div className="border-t border-hairline px-5 py-4 font-mono text-[11px] text-ink-faint">
-        node: iad-sentry-04
-        <br />
-        build: 2026.07.24-rc3
+
+      <div className="border-t border-hairline pt-4 px-2 space-y-1">
+        <p className="text-[10px] font-mono text-ink-dim uppercase">NODE: iad-sentry-04</p>
+        <p className="text-[10px] font-mono text-ink-dim uppercase">BUILD: 2026.07.24-rc3</p>
       </div>
     </aside>
-  )
+  );
 }
