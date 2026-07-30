@@ -1,20 +1,18 @@
-import { AppShell } from "@/components/layout/AppShell"
-import { ShieldCheck } from "lucide-react"
+﻿import React from 'react';
+import { PageContainer } from '../components/layout/PageContainer';
 
-export function EmptyState() {
+export const EmptyState: React.FC = () => {
   return (
-    <AppShell title="Alert Feed" subtitle="0 unacknowledged events">
-      <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-center">
-        <div className="relative flex h-16 w-16 items-center justify-center rounded-full border border-live/30 bg-live-dim">
-          <span className="absolute h-full w-full animate-ping rounded-full bg-live/10" />
-          <ShieldCheck className="h-7 w-7 text-live" strokeWidth={1.5} />
-        </div>
-        <h2 className="font-display text-lg font-semibold text-ink">No active alerts</h2>
-        <p className="max-w-sm text-sm text-ink-dim">
-          All 9 cameras are reporting nominal. New detections will appear here the moment they're classified.
-        </p>
-        <p className="mt-1 font-mono text-[11px] text-ink-faint">Last event cleared 00:14:22 ago</p>
+    <PageContainer title="Alert Feed" description="0 unacknowledged events">
+      <div className="flex flex-col items-center justify-center p-12 bg-gray-50 rounded-lg shadow-sm border border-gray-200 border-dashed h-64">
+        <svg className="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        <h3 className="text-lg font-medium text-gray-900">No Alerts</h3>
+        <p className="text-sm text-gray-500 mt-1">The system is operating normally without detected anomalies.</p>
       </div>
-    </AppShell>
-  )
-}
+    </PageContainer>
+  );
+};
+
+export default EmptyState;
