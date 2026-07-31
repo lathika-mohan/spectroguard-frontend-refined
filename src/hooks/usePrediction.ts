@@ -40,7 +40,7 @@ export const usePrediction = () => {
         try {
           const errData = await response.json();
           if (errData?.error) errMessage = errData.error;
-        } catch (e) {
+        } catch {
           // Fallback to status text
         }
         throw new Error(errMessage);
@@ -64,3 +64,4 @@ export const usePrediction = () => {
 
   return { executePrediction, clearPrediction, result, isLoading, error };
 };
+
