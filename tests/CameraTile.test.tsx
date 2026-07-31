@@ -1,20 +1,26 @@
-import React from "react"
-import { describe, it, expect } from "vitest"
-import { render, screen } from "@testing-library/react"
-import { MemoryRouter } from "react-router-dom"
-import { CameraTile } from "@/components/CameraTile"
-import type { Camera } from "@/lib/mockData"
-
-const camera: Camera = { id: "cam-01", name: "Loading Dock A", zone: "Perimeter", status: "alarm", lastEvent: "Intrusion" }
+﻿import React from 'react';
+import { render, screen } from "@testing-library/react";
+import { BrowserRouter } from "react-router-dom";
+import { describe, it, expect } from "vitest";
+import { CameraTile } from "../src/components/CameraTile";
 
 describe("CameraTile", () => {
   it("links to the camera detail route for real navigation (Bible §review P0-3)", () => {
     render(
-      <MemoryRouter>
-        <CameraTile camera={camera} />
-      </MemoryRouter>
+      <BrowserRouter>
+        <CameraTile
+          camera={{
+            id: "cam-01",
+            name: "Main Entrance",
+            location: "Building A",
+            status: "online",
+            integrityScore: 0.94,
+          }}
+        />
+      </BrowserRouter>
     )
-    const link = screen.getByRole("link")
-    expect(link).toHaveAttribute("href", "/camera/cam-01")
-  })
-})
+    const link = screen.getByRole("link");
+    expect(link).toHaveAttribute("href", "/forensics/cam-01");
+  });
+});
+
