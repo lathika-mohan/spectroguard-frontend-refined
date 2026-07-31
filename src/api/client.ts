@@ -1,12 +1,17 @@
-﻿// Defaulting to typical local backend port; configurable via Vite env vars
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+﻿const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
 export const apiClient = async <T>(endpoint: string, options?: RequestInit): Promise<T> => {
-  // Authentication token handling will be injected here in P7.3
-  const headers = {
+  const token = localStorage.getItem('spectraguard_token');
+  
+  // Cast and reconstruct headers cleanly to handle any incoming HeadersInit variations safely
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options?.headers,
+    ...Object.fromEntries(new Headers(options?.headers || {}).entries())
   };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
   const response = await fetch(`${BASE_URL}${endpoint}`, {
     ...options,
@@ -21,7 +26,7 @@ export const apiClient = async <T>(endpoint: string, options?: RequestInit): Pro
         errorMessage = errorData.error;
       }
     } catch {
-      // Non-JSON error response fallback (omitted catch binding to satisfy linter)
+      // Omit unused variable name to strictly bypass eslint(no-unused-vars)
     }
     throw new Error(errorMessage);
   }
