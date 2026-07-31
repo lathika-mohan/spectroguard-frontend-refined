@@ -24,7 +24,17 @@ export const Forensics: React.FC = () => {
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <PageContainer title="Data Unavailable" description="Could not load forensics telemetry for this node.">
+        <div className="p-6 text-center bg-white rounded-lg border border-gray-200">
+          <Link to="/cameras" className="text-blue-600 hover:text-blue-800 font-medium transition">
+            &larr; Return to Cameras Directory
+          </Link>
+        </div>
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer 
