@@ -9,3 +9,5 @@ coverage
 
 # Release Packages
 *.zip
+
+.env
