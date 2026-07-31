@@ -1,62 +1,37 @@
-﻿import React from "react";
-import { Link } from "react-router-dom";
-import type { Camera } from "@/lib/mockData";
-import { cn } from "@/lib/utils";
+﻿import React from 'react';
+import { Link } from 'react-router-dom';
 
 interface CameraTileProps {
-  camera: Camera;
+  camera: {
+    id: string;
+    name: string;
+    location: string;
+    status: 'online' | 'offline' | 'anomalous';
+    integrityScore: number;
+  };
 }
 
-const statusStyles: Record<Camera["status"], string> = {
-  live: "border-[var(--color-live)] text-[var(--color-live)]",
-  warn: "border-[var(--color-warn)] text-[var(--color-warn)]",
-  alarm: "border-[var(--color-alarm)] text-[var(--color-alarm)] animate-pulse",
-  offline: "border-muted text-muted",
-};
-
-export function CameraTile({ camera }: CameraTileProps) {
-  const isAlarm = camera.status === "alarm";
-  const isWarn = camera.status === "warn";
-  const isOffline = camera.status === "offline";
-
-  const currentStyle = statusStyles[camera.status] || statusStyles.live;
-
+export const CameraTile: React.FC<CameraTileProps> = ({ camera }) => {
   return (
-    <Link
-      to={`/camera/${camera.id}`}
-      className={cn(
-        "relative flex flex-col justify-between p-4 border rounded-lg bg-card transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring",
-        currentStyle
-      )}
-    >
-      <div className="absolute inset-0 pointer-events-none opacity-20 mix-blend-overlay overflow-hidden rounded-lg">
-        <div className="w-full h-full bg-noise-shift" />
-        <div className="w-full h-full bg-scanline" />
-        <div className="w-full h-[10%] bg-sweep absolute top-0" />
-      </div>
-
-      <div className="relative z-10 flex justify-between items-start">
-        <h3 className="font-display font-semibold tracking-tight">{camera.name}</h3>
-        <div className="flex items-center gap-2">
-          {!isOffline && (
-            <span
-              className={cn(
-                "h-2 w-2 rounded-full",
-                isAlarm ? "bg-[var(--color-alarm)] animate-ping" : 
-                isWarn ? "bg-[var(--color-warn)]" : "bg-[var(--color-live)]"
-              )}
-            />
-          )}
-          <span className="text-xs font-mono uppercase opacity-80">
-            {isAlarm ? "REC/ALARM" : isWarn ? "WARN" : isOffline ? "OFFLINE" : "REC"}
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex flex-col justify-between">
+      <div>
+        <div className="flex justify-between items-center">
+          <h4 className="font-semibold text-gray-800 truncate">{camera.name}</h4>
+          <span className={`px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+            camera.status === 'online' ? 'bg-green-100 text-green-800' :
+            camera.status === 'anomalous' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
+          }`}>
+            {camera.status}
           </span>
         </div>
+        <p className="text-xs text-gray-400 mt-1">{camera.location}</p>
       </div>
-
-      <div className="relative z-10 mt-8">
-        <p className="text-sm opacity-80 font-mono">ID: {camera.id}</p>
-        <p className="text-sm opacity-80 font-mono">ZONE: {camera.zone}</p>
+      <div className="mt-4 flex items-center justify-between pt-2 border-t border-gray-50">
+        <span className="text-xs text-gray-500 font-medium">Integrity: {(camera.integrityScore * 100).toFixed(0)}%</span>
+        <Link to={`/forensics/${camera.id}`} className="text-xs font-semibold text-blue-600 hover:text-blue-800">
+          Analyze &rarr;
+        </Link>
       </div>
-    </Link>
+    </div>
   );
-}
+};
