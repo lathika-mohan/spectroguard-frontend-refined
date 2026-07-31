@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
+import { apiClient } from '../api/client';
 
 export interface CameraData {
   id: string;
@@ -15,19 +16,27 @@ export const useCameras = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Simulating API contract via frontend hook architecture
-    // This removes direct mock imports from the view component
-    const timer = setTimeout(() => {
-      setData([
-        { id: 'CAM-041', name: 'Parking East', location: 'Zone A', status: 'anomalous', integrityScore: 0.88, resolution: '1080p', fps: 30 },
-        { id: 'CAM-012', name: 'Entrance', location: 'Lobby', status: 'anomalous', integrityScore: 0.72, resolution: '4K', fps: 24 },
-        { id: 'CAM-005', name: 'Corridor North', location: 'Level 2', status: 'online', integrityScore: 0.99, resolution: '1080p', fps: 30 },
-        { id: 'CAM-088', name: 'Perimeter West', location: 'Exterior', status: 'offline', integrityScore: 0.00, resolution: '1080p', fps: 15 },
-      ]);
-      setIsLoading(false);
-    }, 400);
+    let mounted = true;
+    setIsLoading(true);
 
-    return () => clearTimeout(timer);
+    apiClient<CameraData[]>('/cameras')
+      .then((responseData) => {
+        if (mounted) {
+          setData(responseData);
+          setIsLoading(false);
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to fetch camera telemetry from backend:', error);
+        if (mounted) {
+          setData([]); // Safe fallback to preserve UI stability
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return { data, isLoading };
