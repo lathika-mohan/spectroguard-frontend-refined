@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { apiClient } from '../api/client';
 
 export interface CameraData {
@@ -7,37 +7,32 @@ export interface CameraData {
   location: string;
   status: 'online' | 'offline' | 'anomalous';
   integrityScore: number;
-  resolution: string;
-  fps: number;
+  resolution?: string;
+  fps?: number;
 }
 
 export const useCameras = () => {
   const [data, setData] = useState<CameraData[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchCameras = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const responseData = await apiClient<CameraData[]>('/cameras');
+      setData(responseData);
+    } catch (err: any) {
+      console.error('Failed to fetch camera telemetry from backend:', err);
+      setError(err.message || 'Failed to fetch camera list from backend.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let mounted = true;
-    setIsLoading(true);
-
-    apiClient<CameraData[]>('/cameras')
-      .then((responseData) => {
-        if (mounted) {
-          setData(responseData);
-          setIsLoading(false);
-        }
-      })
-      .catch((error) => {
-        console.error('Failed to fetch camera telemetry from backend:', error);
-        if (mounted) {
-          setData([]); // Safe fallback to preserve UI stability
-          setIsLoading(false);
-        }
-      });
-
-    return () => {
-      mounted = false;
-    };
+    fetchCameras();
   }, []);
 
-  return { data, isLoading };
+  return { data, isLoading, error, refetch: fetchCameras };
 };
