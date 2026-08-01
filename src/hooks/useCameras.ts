@@ -9,6 +9,7 @@ export interface CameraData {
   integrityScore: number;
   resolution?: string;
   fps?: number;
+  thumbnail?: string;
 }
 
 export const useCameras = () => {

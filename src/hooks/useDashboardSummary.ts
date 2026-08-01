@@ -18,7 +18,16 @@ export const useDashboardSummary = () => {
     setError(null);
     try {
       const data = await apiClient<any>('/dashboard/summary');
-      const systemIntegrity = data.systemIntegrity !== undefined ? data.systemIntegrity : (data.system_integrity !== undefined ? data.system_integrity : 0);
+      
+      // Parse systemIntegrity (handles "99.8%" string from backend)
+      let systemIntegrity = 0;
+      const rawIntegrity = data.systemIntegrity !== undefined ? data.systemIntegrity : (data.system_integrity !== undefined ? data.system_integrity : 0);
+      if (typeof rawIntegrity === 'string') {
+        systemIntegrity = parseFloat(rawIntegrity.replace('%', '')) / 100;
+      } else if (typeof rawIntegrity === 'number') {
+        systemIntegrity = rawIntegrity > 1 ? rawIntegrity / 100 : rawIntegrity;
+      }
+
       const activeCameras = data.activeCameras !== undefined ? data.activeCameras : (data.active_cameras !== undefined ? data.active_cameras : 0);
       const integrityAlerts = data.integrityAlerts !== undefined ? data.integrityAlerts : (data.integrity_alerts !== undefined ? data.integrity_alerts : 0);
       const predictionsToday = data.predictionsToday !== undefined ? data.predictionsToday : (data.predictions_today !== undefined ? data.predictions_today : 0);

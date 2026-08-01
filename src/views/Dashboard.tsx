@@ -1,4 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useSearch } from '../hooks/useSearch';
 import type { CategoryType, AITool, NotificationItem } from '../types';
 import { INITIAL_TOOLS, INITIAL_NOTIFICATIONS } from '../data/toolsData';
 import { Header } from '../components/Header';
@@ -15,12 +17,18 @@ import { Sparkles, Filter } from 'lucide-react';
 import { BackgroundLoopCanvas } from '../components/BackgroundLoopCanvas';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+  const { executeSearch, results: searchResults, isLoading: searchLoading, error: searchError } = useSearch();
   const [tools, setTools] = useState<AITool[]>(INITIAL_TOOLS);
   const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
   const [activeCategory, setActiveCategory] = useState<CategoryType>('Dashboard');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'newThisWeek'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeView, setActiveView] = useState<'directory' | 'dashboard'>('directory');
+
+  useEffect(() => {
+    executeSearch(searchQuery);
+  }, [searchQuery]);
 
   // Handle sidebar navigation clicks
   const handleSelectNavPage = (category: CategoryType) => {
@@ -151,41 +159,73 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between border-b border-white/10 pb-3">
                     <div className="flex items-center gap-2">
                       <Filter className="w-4 h-4 text-blue-400" />
-                      <h2 className="text-xl font-bold text-white font-['SF_Pro_Display']">
+                      <h2 className="text-xl font-bold text-white font-sf-display">
                         Search Results for "{searchQuery}"
                       </h2>
                       <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-600/20 text-blue-300 font-mono font-bold border border-blue-500/30">
-                        {filteredTools.length} found
+                        {searchLoading ? 'searching...' : `${searchResults.cameras.length} found`}
                       </span>
                     </div>
                     <button
                       onClick={() => setSearchQuery('')}
-                      className="text-xs text-blue-400 hover:text-blue-300 underline font-['SF_Pro_Text']"
+                      className="text-xs text-blue-400 hover:text-blue-300 underline font-sf-text"
                     >
                       Clear search
                     </button>
                   </div>
 
-                  {filteredTools.length === 0 ? (
+                  {searchLoading ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 animate-pulse">
+                      {[1, 2].map((n) => (
+                        <div key={n} className="h-44 bg-white/5 border border-white/10 rounded-2xl" />
+                      ))}
+                    </div>
+                  ) : searchError ? (
+                    <div className="p-6 rounded-2xl bg-rose-500/5 border border-rose-500/20 text-rose-450 text-xs font-semibold text-center font-sf-text">
+                      Search query execution failed: {searchError}
+                    </div>
+                  ) : searchResults.cameras.length === 0 ? (
                     <div className="liquid-glass-card p-12 rounded-2xl text-center space-y-3 border border-white/10">
-                      <p className="text-slate-300 font-medium font-['SF_Pro_Text']">No surveillance records matching your query.</p>
+                      <p className="text-slate-300 font-medium font-sf-text">No surveillance records matching your query.</p>
                       <button
                         onClick={() => setSearchQuery('')}
-                        className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold font-['SF_Pro_Text']"
+                        className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold font-sf-text"
                       >
                         Return to Dashboard
                       </button>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4">
-                      {filteredTools.map((tool) => (
-                        <ToolCard
-                          key={tool.id}
-                          tool={tool}
-                          onSelect={(t) => setSelectedTool(t)}
-                          onToggleBookmark={handleToggleBookmark}
-                          isBookmarked={bookmarkedIds.includes(tool.id)}
-                        />
+                      {searchResults.cameras.map((camera) => (
+                        <div
+                          key={camera.id}
+                          onClick={() => navigate(`/forensics/${camera.id}`)}
+                          className="group relative liquid-glass-card rounded-2xl border border-white/10 hover:border-blue-500/60 transition-all p-4 flex flex-col justify-between cursor-pointer space-y-3"
+                        >
+                          <div className="space-y-0.5 text-left">
+                            <span className="text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20 uppercase font-mono">
+                              {camera.id}
+                            </span>
+                            <h3 className="text-base font-bold text-white font-sf-display group-hover:text-blue-300 transition-colors mt-2">
+                              {camera.name}
+                            </h3>
+                            <p className="text-xs text-slate-400 font-medium font-sf-text">
+                              {camera.location}
+                            </p>
+                          </div>
+                          
+                          <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs font-sf-text">
+                            <div className="flex flex-col">
+                              <span className="text-[10px] text-slate-400 font-medium">Integrity</span>
+                              <span className="font-extrabold text-white font-mono text-sm">
+                                {Math.round(camera.integrityScore * 100)}%
+                              </span>
+                            </div>
+                            <span className="text-xs font-bold text-blue-400 hover:text-blue-300">
+                              Analyze →
+                            </span>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   )}

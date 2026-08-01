@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { apiClient } from '../api/client';
 
 export interface ShapValue {
@@ -16,6 +16,11 @@ export interface ForensicsData {
   decisionSteps: string[];
 }
 
+interface BackendForensicsResponse {
+  success: boolean;
+  data: ForensicsData;
+}
+
 export const useForensics = (cameraId: string | undefined) => {
   const [data, setData] = useState<ForensicsData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -26,10 +31,10 @@ export const useForensics = (cameraId: string | undefined) => {
     let mounted = true;
     setIsLoading(true);
 
-    apiClient<ForensicsData>(`/forensics/${cameraId}`)
+    apiClient<BackendForensicsResponse>(`/forensics/${cameraId}`)
       .then((responseData) => {
         if (mounted) {
-          setData(responseData);
+          setData(responseData.data);
           setIsLoading(false);
         }
       })

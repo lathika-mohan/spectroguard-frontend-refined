@@ -1,5 +1,6 @@
 import React from 'react';
 import type { CategoryType } from '../types';
+import { usePlatformStatus } from '../hooks/usePlatformStatus';
 import { 
   LayoutDashboard, 
   Camera, 
@@ -32,6 +33,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   selectedFilter: _selectedFilter,
   setSelectedFilter,
 }) => {
+  const { status, isLoading: statusLoading, error: statusError } = usePlatformStatus();
   return (
     <aside 
       id="sidebar-menu" 
@@ -75,51 +77,71 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* SYSTEM STATUS Section */}
       <div className="relative z-20 pt-4 border-t border-white/10 space-y-3">
-        <h3 className="text-[11px] font-bold tracking-widest uppercase text-slate-400 px-3 font-['SF_Pro_Display'] flex items-center justify-between">
-          <span>SYSTEM STATUS</span>
+        <h3 className="text-[11px] font-bold tracking-widest uppercase text-slate-400 px-3 font-sf-display">
+          SYSTEM STATUS
         </h3>
         
-        <div 
-          className="p-3.5 rounded-xl border border-white/10 bg-white/5 transition-all"
-          id="system-status-widget"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-2xl font-extrabold text-white font-['SF_Pro_Display']">24</span>
-            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
-              ONLINE
-            </span>
+        {statusLoading ? (
+          <div className="p-3.5 rounded-xl border border-white/10 bg-white/5 animate-pulse space-y-2">
+            <div className="h-3 bg-white/5 rounded w-2/3"></div>
+            <div className="h-3 bg-white/5 rounded w-1/2"></div>
           </div>
-
-          <p className="text-xs text-slate-300 font-['SF_Pro_Text'] font-medium">
-            Connected Cameras
-          </p>
-
-          {/* Mini Status Graphic */}
-          <div className="h-2 w-full bg-slate-800 rounded-full mt-2.5 overflow-hidden flex gap-0.5 p-0.5">
-            <div className="h-full bg-emerald-500 rounded-full flex-1" />
-            <div className="h-full bg-emerald-500 rounded-full flex-1" />
-            <div className="h-full bg-emerald-500 rounded-full flex-1" />
-            <div className="h-full bg-amber-500 rounded-full w-2" />
+        ) : statusError ? (
+          <div className="p-3.5 rounded-xl border border-rose-500/20 bg-rose-500/5 text-rose-300 text-xs font-semibold text-center font-sf-text">
+            Connection Offline
           </div>
-        </div>
+        ) : status ? (
+          <div className="p-3.5 rounded-xl border border-white/10 bg-white/5 space-y-3 text-xs font-sf-text">
+            <div className="flex items-center justify-between">
+              <span className="text-2xl font-extrabold text-white font-sf-display">
+                {status.connectedCameras}
+              </span>
+              <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                ONLINE
+              </span>
+            </div>
+            
+            <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">
+              Connected Feeds
+            </p>
+
+            <div className="space-y-2 pt-2 border-t border-white/5">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-400">Backend Core</span>
+                <span className={`font-bold uppercase ${status.backendStatus === 'online' || status.backendStatus === 'healthy' ? 'text-emerald-400' : 'text-rose-450'}`}>
+                  {status.backendStatus}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-400">Database</span>
+                <span className={`font-bold uppercase ${status.databaseStatus === 'online' || status.databaseStatus === 'healthy' ? 'text-emerald-400' : 'text-rose-450'}`}>
+                  {status.databaseStatus}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-400">CV Engine</span>
+                <span className={`font-bold uppercase ${status.cvEngineStatus === 'online' || status.cvEngineStatus === 'healthy' ? 'text-emerald-400' : 'text-rose-450'}`}>
+                  {status.cvEngineStatus}
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {/* ACTIVE ALERTS Section */}
       <div className="relative z-20 pt-4 border-t border-white/10 space-y-3">
-        <h3 className="text-[11px] font-bold tracking-widest uppercase text-slate-400 px-3 font-['SF_Pro_Display']">
+        <h3 className="text-[11px] font-bold tracking-widest uppercase text-slate-400 px-3 font-sf-display">
           ACTIVE ALERTS
         </h3>
 
-        <div className="space-y-2 px-1 text-xs font-['SF_Pro_Text']">
+        <div className="space-y-2 px-1 text-xs font-sf-text">
           {[
             { location: 'Parking Zone B', level: 'High', color: 'text-rose-400 bg-rose-500/10 border-rose-500/30', dot: '🔴' },
             { location: 'Warehouse Gate', level: 'Medium', color: 'text-amber-400 bg-amber-500/10 border-amber-500/30', dot: '🟡' },
-            { location: 'Loading Dock', level: 'High', color: 'text-rose-400 bg-rose-500/10 border-rose-500/30', dot: '🔴' },
-            { location: 'Lobby Entrance', level: 'Resolved', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30', dot: '🟢' },
-            { location: 'Main Corridor', level: 'Normal', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30', dot: '🟢' },
           ].map((item) => (
-            <div key={item.location} className="flex items-center justify-between text-slate-300 hover:text-white transition-colors cursor-pointer py-1">
+            <div key={item.location} className="flex items-center justify-between text-slate-350 hover:text-white transition-colors cursor-pointer py-1">
               <span className="font-medium">{item.location}</span>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${item.color}`}>
                 <span className="text-[8px]">{item.dot}</span>
@@ -133,11 +155,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Platform Integrity Banner */}
       <div className="relative z-20 mt-auto pt-4">
         <div className="p-3.5 rounded-xl bg-gradient-to-br from-blue-900/30 to-indigo-950/40 border border-blue-500/20 text-xs">
-          <div className="flex items-center gap-2 text-blue-400 font-semibold mb-1">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Platform Integrity</span>
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2 text-blue-400 font-semibold">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Platform Health</span>
+            </div>
+            {status && (
+              <span className="font-mono font-bold text-emerald-400">
+                {typeof status.platformHealth === 'number' 
+                  ? `${(status.platformHealth * 100).toFixed(1)}%` 
+                  : status.platformHealth}
+              </span>
+            )}
           </div>
-          <p className="text-slate-400 text-[11px] leading-relaxed font-['SF_Pro_Text']">
+          <p className="text-slate-400 text-[11px] leading-relaxed font-sf-text">
             Core services are online and ready for real-time camera integrity analysis.
           </p>
         </div>

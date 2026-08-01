@@ -1,5 +1,7 @@
 import React from 'react';
 import { Search, LayoutDashboard, X } from 'lucide-react';
+import { useUser } from '../hooks/useUser';
+import { useAuth } from '../hooks/useAuth';
 
 interface HeaderProps {
   searchQuery: string;
@@ -19,6 +21,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenNotifications,
   onOpenSubmitModal: _onOpenSubmitModal,
 }) => {
+  const { user, isLoading: userLoading } = useUser();
+  const { logout } = useAuth();
   return (
     <header id="header-bar" className="sticky top-0 z-40 w-full backdrop-blur-2xl bg-[#030712]/90 border-b border-white/10 transition-all">
       <div className="max-w-[1360px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
@@ -68,30 +72,51 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Right: Dashboard Button & Notification Badge */}
-        <div className="flex items-center gap-3 shrink-0">
-          
+        {/* Right: Operator profile details, logout, etc. */}
+        <div className="flex items-center gap-4 shrink-0">
+          {userLoading ? (
+            <div className="w-20 h-4 bg-white/5 rounded animate-pulse" />
+          ) : user ? (
+            <div className="flex items-center gap-3">
+              {user.avatar ? (
+                <img 
+                  src={user.avatar} 
+                  alt="Avatar" 
+                  className="w-7 h-7 rounded-full border border-white/10 object-cover shadow-inner"
+                />
+              ) : (
+                <div className="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center text-white text-[10px] font-extrabold font-mono shadow-inner">
+                  {(user.username || 'OP').substring(0, 2).toUpperCase()}
+                </div>
+              )}
+              <div className="hidden md:block text-left select-none">
+                <div className="text-xs font-bold text-white leading-tight font-sf-display">
+                  {user.username || 'Operator'}
+                </div>
+                <div className="text-[9px] text-gray-400 leading-none mt-0.5">
+                  {user.role || 'Operator'}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           {/* Dashboard Button */}
           <button
             onClick={() => {
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-blue-600/90 text-white border border-blue-400/50 shadow-[0_0_20px_rgba(37,99,235,0.35)] hover:bg-blue-600 transition-all font-['SF_Pro_Text']"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold bg-blue-650/30 text-blue-300 border border-blue-500/20 hover:bg-blue-600/20 hover:text-white transition-all font-sf-text cursor-pointer"
             id="dashboard-toggle-btn"
           >
-            <LayoutDashboard className="w-3.5 h-3.5 text-cyan-300" />
-            <span>Dashboard</span>
+            <LayoutDashboard className="w-3.5 h-3.5 text-blue-400" />
+            <span>Center</span>
           </button>
 
-          {/* Notification Button with OP badge and live pulse indicator */}
           <button
-            onClick={onOpenNotifications}
-            className="relative px-2.5 h-8 rounded-xl liquid-glass-card flex items-center justify-center text-white/90 hover:text-white border-white/15 hover:bg-white/10 transition-all font-bold text-xs font-['SF_Pro_Text'] tracking-wide"
-            title="Operational Notifications"
-            id="notifications-btn"
+            onClick={logout}
+            className="px-2.5 py-1.5 rounded-lg border border-white/10 hover:border-rose-500/50 hover:bg-rose-500/10 text-[10px] font-bold text-gray-300 hover:text-rose-400 transition-all font-sf-text cursor-pointer"
           >
-            <span>OP</span>
-            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-[#030712] animate-pulse" />
+            Logout
           </button>
         </div>
 
