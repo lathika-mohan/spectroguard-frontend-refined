@@ -153,19 +153,8 @@ export const ToolInsightsSection: React.FC<ToolInsightsSectionProps> = ({
       return;
     }
     setFileError('');
-    setVerificationState('uploading');
-    setAnalysisProgress(10);
-
-    const interval = setInterval(() => {
-      setAnalysisProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setVerificationState('complete');
-          return 100;
-        }
-        return prev + 18;
-      });
-    }, 280);
+    // Staging area prepared for Phase 2 integration
+    console.info('On-demand prediction triggered for:', uploadedFileName);
   };
 
   const handleResetVerification = () => {
