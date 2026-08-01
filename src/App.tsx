@@ -51,8 +51,8 @@ export default function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route element={<ProtectedRoute />}>
+              <Route path="dashboard" element={<Dashboard />} />
               <Route element={<AppShell />}>
-                <Route path="dashboard" element={<Dashboard />} />
                 <Route path="cameras" element={<Cameras />} />
                 <Route path="cameras/:id" element={<Forensics />} />
                 <Route path="forensics/:id" element={<Forensics />} />
