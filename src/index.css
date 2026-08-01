@@ -1,9 +1,98 @@
 @import "tailwindcss";
 
+/* SF Pro Display with spaces */
+@font-face {
+  font-family: 'SF Pro Display';
+  font-weight: 400;
+  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  font-weight: 500;
+  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  font-weight: 600;
+  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Semibold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  font-weight: 700;
+  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Bold.woff2') format('woff2');
+}
+
+/* SF Pro Display with underscores */
+@font-face {
+  font-family: 'SF_Pro_Display';
+  font-weight: 400;
+  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'SF_Pro_Display';
+  font-weight: 500;
+  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'SF_Pro_Display';
+  font-weight: 600;
+  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Semibold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'SF_Pro_Display';
+  font-weight: 700;
+  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Bold.woff2') format('woff2');
+}
+
+/* SF Pro Text with spaces */
+@font-face {
+  font-family: 'SF Pro Text';
+  font-weight: 400;
+  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'SF Pro Text';
+  font-weight: 500;
+  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'SF Pro Text';
+  font-weight: 600;
+  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Semibold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'SF Pro Text';
+  font-weight: 700;
+  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Bold.woff2') format('woff2');
+}
+
+/* SF Pro Text with underscores */
+@font-face {
+  font-family: 'SF_Pro_Text';
+  font-weight: 400;
+  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'SF_Pro_Text';
+  font-weight: 500;
+  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'SF_Pro_Text';
+  font-weight: 600;
+  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Semibold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'SF_Pro_Text';
+  font-weight: 700;
+  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Bold.woff2') format('woff2');
+}
+
 @theme {
   /* Type */
-  --font-display: "Space Grotesk", "Inter", sans-serif;
-  --font-body: "Inter", sans-serif;
+  --font-display: "SF_Pro_Display", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-body: "SF_Pro_Text", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "SF_Pro_Text", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   /* Core surfaces */
