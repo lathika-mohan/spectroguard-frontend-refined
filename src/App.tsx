@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { AppProvider } from './context/AppContext';
 
 // 🚨 GLOBAL ERROR BOUNDARY: Catches silent crashes and displays them on screen 🚨
 class GlobalErrorBoundary extends React.Component<any, { hasError: boolean, error: any, errorInfo: any }> {
@@ -25,18 +26,10 @@ class GlobalErrorBoundary extends React.Component<any, { hasError: boolean, erro
   }
 }
 
-// Bulletproof dynamic imports (forces React to handle both 'default' and named component exports)
-const resolveModule = (importPromise: Promise<any>) => 
-  importPromise.then(module => ({ default: module.default || Object.values(module)[0] }));
-
-const AppShell = React.lazy(() => resolveModule(import('./components/layout/AppShell')));
-const Dashboard = React.lazy(() => resolveModule(import('./views/Dashboard')));
-const Cameras = React.lazy(() => resolveModule(import('./views/Cameras')));
-const Forensics = React.lazy(() => resolveModule(import('./views/Forensics')));
-const Settings = React.lazy(() => resolveModule(import('./views/Settings')));
-const LoginPage = React.lazy(() => resolveModule(import('../legacy_archive/LoginPage')));
-const LandingPage = React.lazy(() => resolveModule(import('./landing_page/App')));
-const CameraAnalysis = React.lazy(() => resolveModule(import('./views/CameraAnalysis')));
+import Dashboard from './views/Dashboard';
+import { LoginPage } from '../legacy_archive/LoginPage';
+import LandingPage from './landing_page/App';
+import CameraAnalysis from './views/CameraAnalysis';
 
 const ProtectedRoute = () => {
   const isAuthenticated = localStorage.getItem('spectraguard_token') || localStorage.getItem('token') || localStorage.getItem('accessToken');
@@ -46,25 +39,25 @@ const ProtectedRoute = () => {
 export default function App() {
   return (
     <GlobalErrorBoundary>
-      <BrowserRouter>
-        <Suspense fallback={<div style={{display:'flex', height:'100vh', alignItems:'center', justifyContent:'center', backgroundColor:'#111', color:'#06b6d4', fontFamily:'monospace'}}>Loading SpectraGuard UI...</div>}>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route element={<ProtectedRoute />}>
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="cameras/analysis/:predictionId" element={<CameraAnalysis />} />
-              <Route element={<AppShell />}>
-                <Route path="cameras" element={<Cameras />} />
-                <Route path="cameras/:id" element={<Forensics />} />
-                <Route path="forensics/:id" element={<Forensics />} />
-                <Route path="settings" element={<Settings />} />
+      <AppProvider>
+        <BrowserRouter>
+          <Suspense fallback={<div style={{display:'flex', height:'100vh', alignItems:'center', justifyContent:'center', backgroundColor:'#111', color:'#06b6d4', fontFamily:'monospace'}}>Loading SpectraGuard UI...</div>}>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route element={<ProtectedRoute />}>
+                <Route path="dashboard" element={<Dashboard defaultTab="Dashboard" />} />
+                <Route path="predictions" element={<Dashboard defaultTab="Predictions" />} />
+                <Route path="cameras" element={<Dashboard defaultTab="Cameras" />} />
+                <Route path="vault" element={<Dashboard defaultTab="Vault" />} />
+                <Route path="settings" element={<Dashboard defaultTab="Settings" />} />
+                <Route path="cameras/analysis/:predictionId" element={<CameraAnalysis />} />
               </Route>
-            </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+      </AppProvider>
     </GlobalErrorBoundary>
   );
 }

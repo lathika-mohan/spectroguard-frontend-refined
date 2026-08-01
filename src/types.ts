@@ -46,3 +46,25 @@ export interface NotificationItem {
   read: boolean;
   category: 'Update' | 'New Tool' | 'System';
 }
+
+export interface CameraFeedItem {
+  id: string;
+  name: string;
+  location: string;
+  building: string;
+  status: 'Online' | 'Offline' | 'Investigating' | 'Tampered';
+  integrityScore: number;
+  integrityStatus: 'Nominal' | 'Investigating' | 'Tampered' | 'Offline';
+  resolution: string;
+  frameRate: string;
+  codec: string;
+  lastUpdated: string;
+  lastPrediction: string;
+  connection: 'Stable' | 'Unstable' | 'Disconnected';
+  stream: 'Active' | 'Inactive';
+  imageUrl: string;
+  timestamp: string;
+  predictionDetail: string;
+  historyScores?: { label: string; score: number }[];
+}
+

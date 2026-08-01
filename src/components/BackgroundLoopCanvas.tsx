@@ -118,6 +118,20 @@ export function BackgroundLoopCanvas() {
     let loaded = 0;
     const preloadedImages: HTMLImageElement[] = [];
 
+    // Safety Timeout: Force reveal dashboard after 2.5 seconds regardless of frame preload status
+    const safetyTimeout = setTimeout(() => {
+      setIsLoaded((currentIsLoaded) => {
+        if (!currentIsLoaded) {
+          console.warn("Preloader safety timeout triggered. Forcing page reveal.");
+          imagesRef.current = preloadedImages;
+          resizeCanvas();
+          animationFrameIdRef.current = requestAnimationFrame(tick);
+          return true;
+        }
+        return currentIsLoaded;
+      });
+    }, 2500);
+
     function handleImageLoad() {
       loaded++;
       setLoadedCount(loaded);
@@ -146,6 +160,7 @@ export function BackgroundLoopCanvas() {
     window.addEventListener('resize', resizeCanvas);
 
     return () => {
+      clearTimeout(safetyTimeout);
       window.removeEventListener('resize', resizeCanvas);
       if (animationFrameIdRef.current) {
         cancelAnimationFrame(animationFrameIdRef.current);
@@ -166,7 +181,7 @@ export function BackgroundLoopCanvas() {
           width: '100vw',
           height: '100vh',
           display: 'block',
-          zIndex: -1,
+          zIndex: 0,
           pointerEvents: 'none',
           backgroundColor: '#030712',
         }}

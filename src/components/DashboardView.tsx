@@ -8,7 +8,8 @@ import {
   Layers, 
   TrendingUp, 
   Zap, 
-  CheckCircle2
+  CheckCircle2,
+  ArrowUpRight
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -27,7 +28,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenSubmitModal,
 }) => {
   const bookmarkedTools = tools.filter((t) => bookmarkedIds.includes(t.id));
-  const _featuredTools = tools.filter((t) => t.isFeatured);
+  const featuredTools = tools.filter((t) => t.isFeatured);
 
   // Category statistics calculation
   const statsByCategory = tools.reduce((acc, t) => {

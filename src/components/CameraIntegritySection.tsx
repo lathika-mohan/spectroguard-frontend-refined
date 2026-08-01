@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useCameras } from '../hooks/useCameras';
+import { ArrowRight, Camera } from 'lucide-react';
 
 interface FeaturedCameraData {
   id: string;
@@ -16,9 +15,63 @@ interface FeaturedCameraData {
   imageUrl: string;
 }
 
+const FEATURED_CAMERAS: FeaturedCameraData[] = [
+  {
+    id: 'lobby-entrance',
+    camId: 'CAM-01',
+    badge: 'VERIFIED',
+    badgeColor: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+    badgeDotColor: 'bg-emerald-400',
+    title: 'Lobby Entrance',
+    location: 'Main Building',
+    health: '99.8%',
+    actionText: 'Inspect →',
+    actionColor: 'text-blue-400 hover:text-blue-300',
+    imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80',
+  },
+  {
+    id: 'warehouse-gate',
+    camId: 'CAM-02',
+    badge: 'REVIEW',
+    badgeColor: 'text-amber-400 border-amber-500/30 bg-amber-500/10',
+    badgeDotColor: 'bg-amber-400',
+    title: 'Warehouse Gate',
+    location: 'Warehouse Block A',
+    health: '94.2%',
+    actionText: 'Inspect →',
+    actionColor: 'text-blue-400 hover:text-blue-300',
+    imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80',
+  },
+  {
+    id: 'parking-zone-b',
+    camId: 'CAM-03',
+    badge: 'ALERT',
+    badgeColor: 'text-rose-400 border-rose-500/30 bg-rose-500/10',
+    badgeDotColor: 'bg-rose-400',
+    title: 'Parking Zone B',
+    location: 'East Parking Area',
+    health: '81.4%',
+    actionText: 'Investigate →',
+    actionColor: 'text-rose-400 hover:text-rose-300 font-bold',
+    imageUrl: 'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=600&q=80',
+  },
+  {
+    id: 'main-corridor',
+    camId: 'CAM-04',
+    badge: 'VERIFIED',
+    badgeColor: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+    badgeDotColor: 'bg-emerald-400',
+    title: 'Main Corridor',
+    location: 'Administration Wing',
+    health: '99.1%',
+    actionText: 'Inspect →',
+    actionColor: 'text-blue-400 hover:text-blue-300',
+    imageUrl: 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=600&q=80',
+  },
+];
+
 // 3D Glass Press Push Card Component for Featured Cameras
 const CameraCardItem: React.FC<{ card: FeaturedCameraData }> = ({ card }) => {
-  const navigate = useNavigate();
   const cardRef = useRef<HTMLDivElement>(null);
   const [cursorState, setCursorState] = useState({ x: 0.5, y: 0.5, isHovered: false });
 
@@ -45,7 +98,6 @@ const CameraCardItem: React.FC<{ card: FeaturedCameraData }> = ({ card }) => {
       ref={cardRef}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      onClick={() => navigate(`/forensics/${card.id}`)}
       style={{
         perspective: '1000px',
         transformStyle: 'preserve-3d',
@@ -110,16 +162,16 @@ const CameraCardItem: React.FC<{ card: FeaturedCameraData }> = ({ card }) => {
 
         {/* Camera Name & Location */}
         <div className="space-y-0.5">
-          <h3 className="text-base font-bold text-white font-sf-display group-hover:text-blue-300 transition-colors">
+          <h3 className="text-base font-bold text-white font-['SF_Pro_Display'] group-hover:text-blue-300 transition-colors">
             {card.title}
           </h3>
-          <p className="text-xs text-slate-400 font-medium font-sf-text">
+          <p className="text-xs text-slate-400 font-medium font-['SF_Pro_Text']">
             {card.location}
           </p>
         </div>
 
         {/* Camera Health % and Action Button */}
-        <div className="pt-2.5 border-t border-white/10 flex items-center justify-between text-xs font-sf-text">
+        <div className="pt-2.5 border-t border-white/10 flex items-center justify-between text-xs font-['SF_Pro_Text']">
           <div className="flex flex-col">
             <span className="text-[11px] text-slate-400 font-medium">Camera Health</span>
             <span className="font-extrabold text-white font-mono text-sm tracking-tight">
@@ -127,11 +179,12 @@ const CameraCardItem: React.FC<{ card: FeaturedCameraData }> = ({ card }) => {
             </span>
           </div>
 
-          <span 
-            className={`text-xs font-bold font-sf-text transition-colors flex items-center gap-1 ${card.actionColor}`}
+          <button 
+            onClick={() => alert(`Opening inspection console for ${card.title}`)}
+            className={`text-xs font-bold font-['SF_Pro_Text'] transition-colors flex items-center gap-1 ${card.actionColor}`}
           >
             <span>{card.actionText}</span>
-          </span>
+          </button>
         </div>
 
       </div>
@@ -140,91 +193,22 @@ const CameraCardItem: React.FC<{ card: FeaturedCameraData }> = ({ card }) => {
 };
 
 export const CameraIntegritySection: React.FC = () => {
-  const { data: cameras, isLoading, error } = useCameras();
-
-  const getBadgeType = (status: string) => {
-    const s = status.toLowerCase();
-    if (s === 'online' || s === 'nominal' || s === 'verified') return 'VERIFIED';
-    if (s === 'anomalous' || s === 'critical') return 'ALERT';
-    return 'REVIEW';
-  };
-
-  const getBadgeStyles = (status: string) => {
-    const s = status.toLowerCase();
-    if (s === 'online' || s === 'nominal' || s === 'verified') {
-      return {
-        color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
-        dot: 'bg-emerald-400'
-      };
-    }
-    if (s === 'anomalous' || s === 'critical') {
-      return {
-        color: 'text-rose-400 border-rose-500/30 bg-rose-500/10',
-        dot: 'bg-rose-400'
-      };
-    }
-    return {
-      color: 'text-amber-400 border-amber-500/30 bg-amber-500/10',
-      dot: 'bg-amber-400'
-    };
-  };
-
-  // Safe fallback stock images mapping
-  const getCameraThumbnail = (camId: string, index: number): string => {
-    const urls = [
-      'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=400&q=80',
-      'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=400&q=80',
-      'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=400&q=80',
-      'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=400&q=80',
-    ];
-    return urls[index % urls.length];
-  };
-
   return (
     <div className="space-y-4" id="featured-cameras-section">
       {/* Section Title */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight font-sf-display flex items-center gap-2">
+        <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight font-['SF_Pro_Display'] flex items-center gap-2">
           <span>Featured Cameras</span>
         </h2>
       </div>
 
-      {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5 animate-pulse">
-          {[1, 2, 3, 4].map((n) => (
-            <div key={n} className="h-64 bg-white/5 border border-white/10 rounded-2xl" />
-          ))}
-        </div>
-      ) : error ? (
-        <div className="p-4 text-center text-xs font-semibold text-rose-400 bg-rose-500/5 border border-rose-500/20 rounded-2xl font-sf-text">
-          Failed to load camera registry: {error}
-        </div>
-      ) : cameras.length === 0 ? (
-        <div className="p-8 rounded-2xl bg-white/5 border border-white/5 text-center text-slate-400 text-xs font-semibold font-sf-text">
-          No camera feeds registered in this zone context.
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
-          {cameras.map((camera, index) => {
-            const badgeType = getBadgeType(camera.status);
-            const badgeStyles = getBadgeStyles(camera.status);
-            const cardData: FeaturedCameraData = {
-              id: camera.id,
-              camId: camera.id,
-              badge: badgeType,
-              badgeColor: badgeStyles.color,
-              badgeDotColor: badgeStyles.dot,
-              title: camera.name,
-              location: camera.location,
-              health: `${(camera.integrityScore * 100).toFixed(1)}%`,
-              actionText: badgeType === 'ALERT' ? 'Investigate →' : 'Inspect →',
-              actionColor: badgeType === 'ALERT' ? 'text-rose-400 hover:text-rose-350 font-bold' : 'text-blue-400 hover:text-blue-300',
-              imageUrl: camera.thumbnail || getCameraThumbnail(camera.id, index)
-            };
-            return <CameraCardItem key={camera.id} card={cardData} />;
-          })}
-        </div>
-      )}
+      {/* 4 Image-First Camera Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
+        {FEATURED_CAMERAS.map((card) => (
+          <CameraCardItem key={card.id} card={card} />
+        ))}
+      </div>
     </div>
   );
 };
+
