@@ -6,7 +6,6 @@ import { INITIAL_TOOLS, INITIAL_NOTIFICATIONS } from '../data/toolsData';
 import { Header } from '../components/Header';
 import { Sidebar } from '../components/Sidebar';
 import { HeroBanner } from '../components/HeroBanner';
-import { ToolCard } from '../components/ToolCard';
 import { ToolDetailModal } from '../components/ToolDetailModal';
 import { SubmitToolModal } from '../components/SubmitToolModal';
 import { NotificationsDrawer } from '../components/NotificationsDrawer';
@@ -77,7 +76,7 @@ export default function Dashboard() {
   }, [tools]);
 
   // Filtered tools list
-  const filteredTools = useMemo(() => {
+  const _filteredTools = useMemo(() => {
     return tools.filter((tool) => {
       // Search filter
       if (searchQuery.trim() !== '') {

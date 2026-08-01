@@ -1,13 +1,16 @@
 import React from 'react';
 import type { CategoryType } from '../types';
 import { usePlatformStatus } from '../hooks/usePlatformStatus';
+import { useUser } from '../hooks/useUser';
+import { useAuth } from '../hooks/useAuth';
 import { 
   LayoutDashboard, 
   Camera, 
   Search, 
   BrainCircuit, 
   Settings,
-  Sparkles
+  Sparkles,
+  LogOut
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -34,11 +37,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setSelectedFilter,
 }) => {
   const { status, isLoading: statusLoading, error: statusError } = usePlatformStatus();
+  const { user } = useUser();
+  const { logout } = useAuth();
+
   return (
     <aside 
       id="sidebar-menu" 
       className="w-full lg:w-64 shrink-0 lg:sticky lg:top-20 lg:self-start flex flex-col gap-5 p-4 rounded-2xl liquid-glass-card border border-white/10 shadow-2xl shadow-black/50 select-none transition-all duration-300"
     >
+      {/* Operator profile context */}
+      {user && (
+        <div className="relative z-20 flex items-center justify-between gap-3 p-3 rounded-xl border border-white/15 bg-white/5 font-['SF_Pro_Text']" id="operator-profile-card">
+          <div className="flex items-center gap-3 min-w-0">
+            <img
+              src={user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80'}
+              alt={user.username || 'Operator'}
+              className="w-10 h-10 rounded-full border border-blue-500/30 object-cover shrink-0"
+              id="operator-avatar"
+            />
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-bold text-white truncate font-['SF_Pro_Display']" id="operator-username">
+                {user.username || 'op-4471'}
+              </span>
+              <span className="text-[10px] text-slate-400 font-medium truncate" id="operator-role">
+                {user.role || 'Lead Security Operator'}
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => void logout()}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-white/5 transition-all shrink-0"
+            title="Log Out"
+            id="logout-btn"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* OPERATIONS Section */}
       <div className="relative z-20">
         <h2 className="text-[11px] font-bold tracking-widest uppercase text-slate-400 mb-3 px-3 font-['SF_Pro_Display']">

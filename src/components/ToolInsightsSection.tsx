@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDashboardSummary } from '../hooks/useDashboardSummary';
 import { useEvents } from '../hooks/useEvents';
+import { apiClient } from '../api/client';
 import { 
   Camera, 
   UploadCloud, 
@@ -85,7 +86,7 @@ interface ToolInsightsSectionProps {
 
 export const ToolInsightsSection: React.FC<ToolInsightsSectionProps> = ({
   onSelectTool: _onSelectTool,
-  onViewAllRecentlyAdded,
+  onViewAllRecentlyAdded: _onViewAllRecentlyAdded,
 }) => {
   const navigate = useNavigate();
 
@@ -147,14 +148,37 @@ export const ToolInsightsSection: React.FC<ToolInsightsSectionProps> = ({
     }
   };
 
-  const handleRunPrediction = () => {
-    if (!uploadedFileName) {
+  const handleRunPrediction = async () => {
+    if (!uploadedFileName || !fileInputRef.current?.files?.[0]) {
       setFileError('Please select or upload a video file first to run prediction.');
       return;
     }
     setFileError('');
-    // Staging area prepared for Phase 2 integration
-    console.info('On-demand prediction triggered for:', uploadedFileName);
+    setVerificationState('uploading');
+    setAnalysisProgress(20);
+
+    try {
+      const file = fileInputRef.current.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+
+      setAnalysisProgress(50);
+      const data = await apiClient<{ prediction_id: string; status: string }>('/predict', {
+        method: 'POST',
+        body: formData,
+      });
+
+      setAnalysisProgress(100);
+      setTimeout(() => {
+        navigate(`/cameras/analysis/${data.prediction_id}`);
+      }, 300);
+
+    } catch (err: any) {
+      console.error('Inference pipeline failed:', err);
+      setFileError(err.message || 'Verification failed. Backend is unavailable.');
+      setVerificationState('idle');
+      setAnalysisProgress(0);
+    }
   };
 
   const handleResetVerification = () => {

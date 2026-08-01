@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCameras } from '../hooks/useCameras';
-import type { CameraData } from '../hooks/useCameras';
 
 interface FeaturedCameraData {
   id: string;
@@ -182,11 +181,11 @@ export const CameraIntegritySection: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4" id="camera-integrity-section">
+    <div className="space-y-4" id="featured-cameras-section">
       {/* Section Title */}
-      <div className="flex items-center justify-between border-b border-white/10 pb-2">
+      <div className="flex items-center justify-between">
         <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight font-sf-display flex items-center gap-2">
-          <span>Camera Integrity Overview</span>
+          <span>Featured Cameras</span>
         </h2>
       </div>
 
@@ -197,8 +196,8 @@ export const CameraIntegritySection: React.FC = () => {
           ))}
         </div>
       ) : error ? (
-        <div className="p-6 rounded-2xl bg-rose-500/5 border border-rose-500/20 text-rose-400 text-xs font-semibold text-center font-sf-text">
-          Failed to load camera integrity telemetry: {error}
+        <div className="p-4 text-center text-xs font-semibold text-rose-400 bg-rose-500/5 border border-rose-500/20 rounded-2xl font-sf-text">
+          Failed to load camera registry: {error}
         </div>
       ) : cameras.length === 0 ? (
         <div className="p-8 rounded-2xl bg-white/5 border border-white/5 text-center text-slate-400 text-xs font-semibold font-sf-text">
@@ -219,7 +218,7 @@ export const CameraIntegritySection: React.FC = () => {
               location: camera.location,
               health: `${(camera.integrityScore * 100).toFixed(1)}%`,
               actionText: badgeType === 'ALERT' ? 'Investigate →' : 'Inspect →',
-              actionColor: badgeType === 'ALERT' ? 'text-rose-400 hover:text-rose-300 font-bold' : 'text-blue-400 hover:text-blue-300',
+              actionColor: badgeType === 'ALERT' ? 'text-rose-400 hover:text-rose-350 font-bold' : 'text-blue-400 hover:text-blue-300',
               imageUrl: camera.thumbnail || getCameraThumbnail(camera.id, index)
             };
             return <CameraCardItem key={camera.id} card={cardData} />;

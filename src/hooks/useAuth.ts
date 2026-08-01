@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { apiClient } from '../api/client';
 
 export const useAuth = () => {
@@ -24,9 +24,15 @@ export const useAuth = () => {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('spectraguard_token');
-    window.location.href = '/dashboard';
+  const logout = async (): Promise<void> => {
+    try {
+      await apiClient('/auth/logout', { method: 'POST' });
+    } catch (err) {
+      console.warn('API logout failed:', err);
+    } finally {
+      localStorage.removeItem('spectraguard_token');
+      window.location.href = '/';
+    }
   };
 
   const isAuthenticated = (): boolean => {

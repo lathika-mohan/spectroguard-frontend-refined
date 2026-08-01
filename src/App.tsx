@@ -36,9 +36,10 @@ const Forensics = React.lazy(() => resolveModule(import('./views/Forensics')));
 const Settings = React.lazy(() => resolveModule(import('./views/Settings')));
 const LoginPage = React.lazy(() => resolveModule(import('../legacy_archive/LoginPage')));
 const LandingPage = React.lazy(() => resolveModule(import('./landing_page/App')));
+const CameraAnalysis = React.lazy(() => resolveModule(import('./views/CameraAnalysis')));
 
 const ProtectedRoute = () => {
-  const isAuthenticated = localStorage.getItem('token') || localStorage.getItem('accessToken');
+  const isAuthenticated = localStorage.getItem('spectraguard_token') || localStorage.getItem('token') || localStorage.getItem('accessToken');
   return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
 };
 
@@ -52,6 +53,7 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route element={<ProtectedRoute />}>
               <Route path="dashboard" element={<Dashboard />} />
+              <Route path="cameras/analysis/:predictionId" element={<CameraAnalysis />} />
               <Route element={<AppShell />}>
                 <Route path="cameras" element={<Cameras />} />
                 <Route path="cameras/:id" element={<Forensics />} />

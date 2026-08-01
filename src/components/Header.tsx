@@ -18,7 +18,7 @@ export const Header: React.FC<HeaderProps> = ({
   setSearchQuery,
   activeView: _activeView,
   setActiveView,
-  onOpenNotifications,
+  onOpenNotifications: _onOpenNotifications,
   onOpenSubmitModal: _onOpenSubmitModal,
 }) => {
   const { user, isLoading: userLoading } = useUser();
