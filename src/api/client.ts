@@ -1,4 +1,10 @@
-﻿const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+const getBaseUrl = (): string => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  if (!envUrl) return 'http://localhost:8000/api/v1';
+  return envUrl.endsWith('/api/v1') ? envUrl : `${envUrl}/api/v1`;
+};
+const BASE_URL = getBaseUrl();
+
 
 export class ApiError extends Error {
   status: number; // Explicit property declaration to satisfy erasableSyntaxOnly

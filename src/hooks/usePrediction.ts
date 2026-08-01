@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 
 export interface PredictionResponse {
   prediction: string;
@@ -27,7 +27,13 @@ export const usePrediction = () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+      const getBaseUrl = (): string => {
+        const envUrl = import.meta.env.VITE_API_BASE_URL;
+        if (!envUrl) return 'http://localhost:8000/api/v1';
+        return envUrl.endsWith('/api/v1') ? envUrl : `${envUrl}/api/v1`;
+      };
+      const baseUrl = getBaseUrl();
+
       
       const response = await fetch(`${baseUrl}/predict`, {
         method: 'POST',
