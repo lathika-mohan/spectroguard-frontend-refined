@@ -4,89 +4,91 @@
 @font-face {
   font-family: 'SF Pro Display';
   font-weight: 400;
-  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Regular.woff2') format('woff2');
+  src: local('SF Pro Display Regular'), local('SF Pro Display'), local('-apple-system'), local('BlinkMacSystemFont'), url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Regular.woff2') format('woff2'), local('Segoe UI'), local('Roboto'), local('Arial');
 }
 @font-face {
   font-family: 'SF Pro Display';
   font-weight: 500;
-  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Medium.woff2') format('woff2');
+  src: local('SF Pro Display Medium'), local('SF Pro Display'), local('-apple-system'), local('BlinkMacSystemFont'), url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Medium.woff2') format('woff2'), local('Segoe UI Semibold'), local('Segoe UI'), local('Roboto Medium'), local('Roboto'), local('Arial');
 }
 @font-face {
   font-family: 'SF Pro Display';
   font-weight: 600;
-  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Semibold.woff2') format('woff2');
+  src: local('SF Pro Display Semibold'), local('SF Pro Display'), local('-apple-system'), local('BlinkMacSystemFont'), url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Semibold.woff2') format('woff2'), local('Segoe UI Semibold'), local('Segoe UI'), local('Roboto Medium'), local('Roboto'), local('Arial');
 }
 @font-face {
   font-family: 'SF Pro Display';
   font-weight: 700;
-  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Bold.woff2') format('woff2');
+  src: local('SF Pro Display Bold'), local('SF Pro Display'), local('-apple-system'), local('BlinkMacSystemFont'), url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Bold.woff2') format('woff2'), local('Segoe UI Bold'), local('Segoe UI'), local('Roboto Bold'), local('Roboto'), local('Arial');
 }
 
 /* SF Pro Display with underscores */
 @font-face {
   font-family: 'SF_Pro_Display';
   font-weight: 400;
-  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Regular.woff2') format('woff2');
+  src: local('SF Pro Display Regular'), local('SF Pro Display'), local('-apple-system'), local('BlinkMacSystemFont'), url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Regular.woff2') format('woff2'), local('Segoe UI'), local('Roboto'), local('Arial');
 }
 @font-face {
   font-family: 'SF_Pro_Display';
   font-weight: 500;
-  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Medium.woff2') format('woff2');
+  src: local('SF Pro Display Medium'), local('SF Pro Display'), local('-apple-system'), local('BlinkMacSystemFont'), url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Medium.woff2') format('woff2'), local('Segoe UI Semibold'), local('Segoe UI'), local('Roboto Medium'), local('Roboto'), local('Arial');
 }
 @font-face {
   font-family: 'SF_Pro_Display';
   font-weight: 600;
-  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Semibold.woff2') format('woff2');
+  src: local('SF Pro Display Semibold'), local('SF Pro Display'), local('-apple-system'), local('BlinkMacSystemFont'), url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Semibold.woff2') format('woff2'), local('Segoe UI Semibold'), local('Segoe UI'), local('Roboto Medium'), local('Roboto'), local('Arial');
 }
 @font-face {
   font-family: 'SF_Pro_Display';
   font-weight: 700;
-  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Bold.woff2') format('woff2');
+  src: local('SF Pro Display Bold'), local('SF Pro Display'), local('-apple-system'), local('BlinkMacSystemFont'), url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProDisplay-Bold.woff2') format('woff2'), local('Segoe UI Bold'), local('Segoe UI'), local('Roboto Bold'), local('Roboto'), local('Arial');
 }
 
 /* SF Pro Text with spaces */
 @font-face {
   font-family: 'SF Pro Text';
   font-weight: 400;
-  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Regular.woff2') format('woff2');
+  src: local('SF Pro Text Regular'), local('SF Pro Text'), local('-apple-system'), local('BlinkMacSystemFont'), url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Regular.woff2') format('woff2'), local('Segoe UI'), local('Roboto'), local('Arial');
 }
 @font-face {
   font-family: 'SF Pro Text';
   font-weight: 500;
-  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Medium.woff2') format('woff2');
+  src: local('SF Pro Text Medium'), local('SF Pro Text'), local('-apple-system'), local('BlinkMacSystemFont'), url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Medium.woff2') format('woff2'), local('Segoe UI Semibold'), local('Segoe UI'), local('Roboto Medium'), local('Roboto'), local('Arial');
 }
 @font-face {
   font-family: 'SF Pro Text';
   font-weight: 600;
-  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Semibold.woff2') format('woff2');
+  src: local('SF Pro Text Semibold'), local('SF Pro Text'), local('-apple-system'), local('BlinkMacSystemFont'), url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Semibold.woff2') format('woff2'), local('Segoe UI Semibold'), local('Segoe UI'), local('Roboto Medium'), local('Roboto'), local('Arial');
 }
 @font-face {
   font-family: 'SF Pro Text';
   font-weight: 700;
-  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Bold.woff2') format('woff2');
+  src: local('SF Pro Text Bold'), local('SF Pro Text'), local('-apple-system'), local('BlinkMacSystemFont'), url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Bold.woff2') format('woff2'), local('Segoe UI Bold'), local('Segoe UI'), local('Roboto Bold'), local('Roboto'), local('Arial');
 }
 
 /* SF Pro Text with underscores */
 @font-face {
   font-family: 'SF_Pro_Text';
   font-weight: 400;
-  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Regular.woff2') format('woff2');
+  src: local('SF Pro Text Regular'), local('SF Pro Text'), local('-apple-system'), local('BlinkMacSystemFont'), url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Regular.woff2') format('woff2'), local('Segoe UI'), local('Roboto'), local('Arial');
 }
 @font-face {
   font-family: 'SF_Pro_Text';
   font-weight: 500;
-  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Medium.woff2') format('woff2');
+  src: local('SF Pro Text Medium'), local('SF Pro Text'), local('-apple-system'), local('BlinkMacSystemFont'), url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Medium.woff2') format('woff2'), local('Segoe UI Semibold'), local('Segoe UI'), local('Roboto Medium'), local('Roboto'), local('Arial');
 }
 @font-face {
   font-family: 'SF_Pro_Text';
   font-weight: 600;
-  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Semibold.woff2') format('woff2');
+  src: local('SF Pro Text Semibold'), local('SF Pro Text'), local('-apple-system'), local('BlinkMacSystemFont'), url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Semibold.woff2') format('woff2'), local('Segoe UI Semibold'), local('Segoe UI'), local('Roboto Medium'), local('Roboto'), local('Arial');
 }
 @font-face {
   font-family: 'SF_Pro_Text';
   font-weight: 700;
-  src: url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Bold.woff2') format('woff2');
+  src: local('SF_Pro_Text');
+  src: local('SF Pro Text Bold'), local('SF Pro Text'), local('-apple-system'), local('BlinkMacSystemFont'), url('https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/SFProText-Bold.woff2') format('woff2'), local('Segoe UI Bold'), local('Segoe UI'), local('Roboto Bold'), local('Roboto'), local('Arial');
 }
+
 
 @theme {
   /* Type */
