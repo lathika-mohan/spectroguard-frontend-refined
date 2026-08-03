@@ -25,38 +25,82 @@ class GlobalErrorBoundary extends React.Component<any, { hasError: boolean, erro
     return this.props.children;
   }
 }
-
+import { useEffect } from 'react';
+import { ShieldCheck } from 'lucide-react';
+import { AuthProvider, useAuthContext, AuthStatus } from './context/AuthContext';
 import Dashboard from './views/Dashboard';
 import { LoginPage } from '../legacy_archive/LoginPage';
 import LandingPage from './landing_page/App';
 import CameraAnalysis from './views/CameraAnalysis';
 
+const LoadingScreen = () => {
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#030712] text-white font-mono select-none">
+      <div className="flex flex-col items-center gap-4">
+        <div className="flex items-center gap-2 mb-2 animate-pulse">
+          <ShieldCheck className="h-6 w-6 text-cyan-400" />
+          <span className="font-bold tracking-widest text-sm text-cyan-400">SPECTRAGUARD</span>
+        </div>
+        <div className="relative w-8 h-8">
+          <div className="absolute inset-0 rounded-full border-2 border-cyan-500/20"></div>
+          <div className="absolute inset-0 rounded-full border-2 border-t-cyan-400 animate-spin"></div>
+        </div>
+        <p className="text-xs text-slate-400 mt-2">Initializing Workspace...</p>
+      </div>
+    </div>
+  );
+};
+
 const ProtectedRoute = () => {
-  const isAuthenticated = localStorage.getItem('spectraguard_token') || localStorage.getItem('token') || localStorage.getItem('accessToken');
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+  const { user, status, initializeUser, isLoading } = useAuthContext();
+  const token = localStorage.getItem('spectraguard_token') || 
+                localStorage.getItem('token') || 
+                localStorage.getItem('accessToken');
+
+  useEffect(() => {
+    if (token && status === AuthStatus.UNINITIALIZED) {
+      initializeUser();
+    }
+  }, [token, status, initializeUser]);
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <Outlet />;
 };
 
 export default function App() {
   return (
     <GlobalErrorBoundary>
       <AppProvider>
-        <BrowserRouter>
-          <Suspense fallback={<div style={{display:'flex', height:'100vh', alignItems:'center', justifyContent:'center', backgroundColor:'#111', color:'#06b6d4', fontFamily:'monospace'}}>Loading SpectraGuard UI...</div>}>
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route element={<ProtectedRoute />}>
-                <Route path="dashboard" element={<Dashboard defaultTab="Dashboard" />} />
-                <Route path="predictions" element={<Dashboard defaultTab="Predictions" />} />
-                <Route path="cameras" element={<Dashboard defaultTab="Cameras" />} />
-                <Route path="vault" element={<Dashboard defaultTab="Vault" />} />
-                <Route path="settings" element={<Dashboard defaultTab="Settings" />} />
-                <Route path="cameras/analysis/:predictionId" element={<CameraAnalysis />} />
-              </Route>
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
+        <AuthProvider>
+          <BrowserRouter>
+            <Suspense fallback={null}>
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route element={<ProtectedRoute />}>
+                  <Route path="dashboard" element={<Dashboard defaultTab="Dashboard" />} />
+                  <Route path="predictions" element={<Dashboard defaultTab="Predictions" />} />
+                  <Route path="cameras" element={<Dashboard defaultTab="Cameras" />} />
+                  <Route path="vault" element={<Dashboard defaultTab="Vault" />} />
+                  <Route path="settings" element={<Dashboard defaultTab="Settings" />} />
+                  <Route path="cameras/analysis/:predictionId" element={<CameraAnalysis />} />
+                </Route>
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </AuthProvider>
       </AppProvider>
     </GlobalErrorBoundary>
   );

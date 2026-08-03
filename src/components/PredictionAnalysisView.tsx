@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import type { CameraFeedItem } from '../types';
+import React, { useState, useEffect } from 'react';
+import type { CameraFeedItem, PredictionSession } from '../types';
 import { GlassPressCard } from './GlassPressCard';
+import { apiClient } from '../api/client';
 import { 
   Video, 
   ShieldAlert, 
@@ -37,12 +38,14 @@ import {
 
 interface PredictionAnalysisViewProps {
   currentCamera?: CameraFeedItem | null;
+  prediction?: PredictionSession | null;
   onNavigateToForensics?: () => void;
   onNavigateToUploadModal?: () => void;
 }
 
 export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
   currentCamera,
+  prediction: propPrediction,
   onNavigateToForensics,
   onNavigateToUploadModal
 }) => {
@@ -58,41 +61,97 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
   const [isFftModalOpen, setIsFftModalOpen] = useState(false);
   const [selectedFrameIdx, setSelectedFrameIdx] = useState(2); // Frame #330 Key Frame by default
 
+  const [fetchedPrediction, setFetchedPrediction] = useState<PredictionSession | null>(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  useEffect(() => {
+    if (propPrediction) {
+      setFetchedPrediction(propPrediction);
+      return;
+    }
+    const loadLatestHistory = async () => {
+      setIsLoadingHistory(true);
+      try {
+        const history = await apiClient<PredictionSession[]>('/predictions/history');
+        if (history && history.length > 0) {
+          // Sort by timestamp descending
+          const sorted = [...history].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          setFetchedPrediction(sorted[0]);
+        }
+      } catch (err) {
+        console.error('Failed to load latest prediction from history:', err);
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+    loadLatestHistory();
+  }, [propPrediction]);
+
+  const activePrediction = fetchedPrediction || propPrediction;
+
   // Fallback camera or current analyzed footage data
   const cameraData = currentCamera || {
-    id: 'CAM-001',
-    name: 'warehouse_gate.mp4',
-    location: 'Warehouse Gate',
-    building: 'Main Warehouse',
-    status: 'Online',
-    integrityScore: 32,
-    integrityStatus: 'Tampered',
+    id: activePrediction ? activePrediction.camera : 'CAM-001',
+    name: activePrediction ? activePrediction.filename : 'warehouse_gate.mp4',
+    location: activePrediction ? 'Lobby Entrance' : 'Warehouse Gate',
+    building: 'Main Building',
+    status: activePrediction ? (activePrediction.prediction === 'tampering_suspected' ? 'Tampered' : 'Online') : 'Online',
+    integrityScore: activePrediction ? Math.round((activePrediction.prediction === 'tampering_suspected' ? (1.0 - activePrediction.confidence) : activePrediction.confidence) * 100) : 32,
+    integrityStatus: activePrediction ? (activePrediction.prediction === 'tampering_suspected' ? 'Tampered' : 'Nominal') : 'Tampered',
     resolution: '1920 × 1080',
     frameRate: '30 FPS',
     codec: 'H.264',
     lastUpdated: 'Just now',
-    lastPrediction: 'May 24, 2025 07:22 PM',
+    lastPrediction: activePrediction ? new Date(activePrediction.timestamp).toLocaleString() : 'May 24, 2025 07:22 PM',
     connection: 'Stable',
     stream: 'Active',
     imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=800&q=80',
-    timestamp: '07:22:17 PM',
-    predictionDetail: 'Strong evidence of lens obstruction / physical interference detected.',
+    timestamp: activePrediction ? new Date(activePrediction.timestamp).toLocaleTimeString() : '07:22:17 PM',
+    predictionDetail: activePrediction ? activePrediction.rationale : 'Strong evidence of lens obstruction / physical interference detected.',
   };
 
   const handleCopyHash = () => {
-    navigator.clipboard.writeText('a7f3c9e821b014d983c20021b21d4f');
+    const hash = activePrediction ? activePrediction.prediction_id : 'a7f3c9e821b014d983c20021b21d4f';
+    navigator.clipboard.writeText(hash);
     setCopiedHash(true);
     setTimeout(() => setCopiedHash(false), 2000);
   };
 
-  const isTampered = cameraData.integrityStatus === 'Tampered' || cameraData.integrityScore < 60;
+  const isTampered = activePrediction
+    ? activePrediction.prediction === 'tampering_suspected'
+    : (cameraData.integrityStatus === 'Tampered' || cameraData.integrityScore < 60);
+
+  const displayConfidence = activePrediction ? activePrediction.confidence : (isTampered ? 0.986 : 0.992);
+  const displayIntegrity = activePrediction
+    ? (activePrediction.prediction === 'tampering_suspected' ? (1.0 - activePrediction.confidence) : activePrediction.confidence)
+    : (isTampered ? 0.32 : 0.98);
+  const displayRationale = activePrediction ? activePrediction.rationale : (isTampered ? 'Strong evidence of lens obstruction / physical interference detected.' : 'No evidence of lens obstruction or physical interference detected.');
+  const displayLatency = activePrediction ? activePrediction.latency_ms : 1676.65;
+  const displaySeverity = activePrediction ? activePrediction.severity : (isTampered ? 'CRITICAL' : 'CLEAR');
 
   const handleExportPdf = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
+    const displayConfidence = activePrediction ? activePrediction.confidence : (isTampered ? 0.986 : 0.992);
+    const displayIntegrity = activePrediction
+      ? (activePrediction.prediction === 'tampering_suspected' ? (1.0 - activePrediction.confidence) : activePrediction.confidence)
+      : (isTampered ? 0.32 : 0.98);
+    const displayRationale = activePrediction ? activePrediction.rationale : (isTampered ? 'Strong evidence of lens obstruction / physical interference detected.' : 'No evidence of lens obstruction or physical interference detected.');
+
     const statusColor = isTampered ? '#e11d48' : '#059669';
     const statusText = isTampered ? 'TAMPERING DETECTED' : 'NOMINAL INTEGRITY FEED';
+
+    const featuresRows = activePrediction && activePrediction.feature_snapshot
+      ? Object.entries(activePrediction.feature_snapshot).map(([key, val]) => 
+          `<tr><td>${key}</td><td>${val.toFixed(4)}</td><td><strong>${isTampered ? 'Abnormal' : 'Nominal'}</strong></td></tr>`
+        ).join('\n')
+      : `<tr><td>Spectral Entropy</td><td>${isTampered ? '0.842 (Elevated)' : '0.120 (Normal)'}</td><td><strong>${isTampered ? 'High Risk' : 'Normal'}</strong></td></tr>
+         <tr><td>Dominant Frequency</td><td>${isTampered ? '320 Hz (Peak Anomaly)' : '120 Hz (Baseline)'}</td><td><strong>Nominal</strong></td></tr>
+         <tr><td>Energy Distribution</td><td>${isTampered ? 'Mid-High Band Concentration' : 'Uniform Distribution'}</td><td><strong>${isTampered ? 'Abnormal' : 'Nominal'}</strong></td></tr>
+         <tr><td>Edge Consistency</td><td>${isTampered ? 'Reduced (0.27)' : 'Optimal (0.94)'}</td><td><strong>${isTampered ? 'Degraded' : 'Optimal'}</strong></td></tr>
+         <tr><td>Texture Uniformity</td><td>${isTampered ? 'Irregular (0.31)' : 'Uniform (0.88)'}</td><td><strong>${isTampered ? 'Irregular' : 'Uniform'}</strong></td></tr>
+         <tr><td>Noise Floor</td><td>${isTampered ? '4.820 dB' : '0.014 dB'}</td><td><strong>Normal</strong></td></tr>`;
     
     const htmlContent = `
       <!DOCTYPE html>
@@ -273,21 +332,19 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
           <div class="grid-2">
             <div class="card">
               <h3>Model Confidence Score</h3>
-              <div class="val">${isTampered ? '98.6%' : '99.2%'}</div>
-              <p style="margin: 6px 0 0; font-size: 12px; color: #64748b;">Random Forest Inference v1.3.2</p>
+              <div class="val">${(displayConfidence * 100).toFixed(2)}%</div>
+              <p style="margin: 6px 0 0; font-size: 12px; color: #64748b;">Production Inference Pipeline v1.0.0</p>
             </div>
             <div class="card">
               <h3>Integrity Rating</h3>
-              <div class="val" style="color: ${statusColor}">${isTampered ? '32% (Degraded)' : '98% (Optimal)'}</div>
+              <div class="val" style="color: ${statusColor}">${Math.round(displayIntegrity * 100)}%</div>
               <p style="margin: 6px 0 0; font-size: 12px; color: #64748b;">Sub-Pixel Frequency Assessment</p>
             </div>
           </div>
 
           <div class="section-title">Investigation Summary</div>
           <div class="text-block">
-            ${isTampered 
-              ? 'The uploaded surveillance media exhibits significant frequency-domain anomalies consistent with partial lens obstruction. Spectral analysis indicates abnormal energy concentration in the mid-high frequency band along with reduced edge consistency and elevated entropy. Explainability analysis confirms that these frequency characteristics contributed most strongly to the final tampering classification.'
-              : 'The uploaded surveillance media exhibits nominal frequency-domain characteristics with no signs of lens obstruction or tampering. Spectral analysis indicates normal energy distribution across frequency bands along with optimal edge consistency and normal noise floor. Explainability analysis confirms that baseline optical parameters contributed most strongly to the nominal classification.'}
+            ${displayRationale}
           </div>
 
           <div class="section-title">Extracted Features Breakdown</div>
@@ -300,12 +357,7 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
               </tr>
             </thead>
             <tbody>
-              <tr><td>Spectral Entropy</td><td>${isTampered ? '0.842 (Elevated)' : '0.120 (Normal)'}</td><td><strong>${isTampered ? 'High Risk' : 'Normal'}</strong></td></tr>
-              <tr><td>Dominant Frequency</td><td>${isTampered ? '320 Hz (Peak Anomaly)' : '120 Hz (Baseline)'}</td><td><strong>Nominal</strong></td></tr>
-              <tr><td>Energy Distribution</td><td>${isTampered ? 'Mid-High Band Concentration' : 'Uniform Distribution'}</td><td><strong>${isTampered ? 'Abnormal' : 'Nominal'}</strong></td></tr>
-              <tr><td>Edge Consistency</td><td>${isTampered ? 'Reduced (0.27)' : 'Optimal (0.94)'}</td><td><strong>${isTampered ? 'Degraded' : 'Optimal'}</strong></td></tr>
-              <tr><td>Texture Uniformity</td><td>${isTampered ? 'Irregular (0.31)' : 'Uniform (0.88)'}</td><td><strong>${isTampered ? 'Irregular' : 'Uniform'}</strong></td></tr>
-              <tr><td>Noise Floor</td><td>${isTampered ? '4.820 dB' : '0.014 dB'}</td><td><strong>Normal</strong></td></tr>
+              ${featuresRows}
             </tbody>
           </table>
 
@@ -332,8 +384,37 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
     printWindow.document.close();
   };
 
+  const getDynamicGraphPath = (features: Record<string, number>) => {
+    const values = [
+      features.fft_0 || 0,
+      features.fft_1 || 0,
+      features.fft_2 || 0,
+      features.fft_3 || 0,
+      features.fft_4 || 0,
+      features.fft_5 || 0,
+      features.fft_6 || 0,
+      features.fft_7 || 0,
+      features.fft_8 || 0,
+      features.fft_9 || 0,
+    ];
+    const maxVal = Math.max(...values, 1e-6);
+    const minVal = Math.min(...values);
+    const range = maxVal - minVal || 1e-6;
+    
+    const points = values.map((val, idx) => {
+      const x = (idx * 500) / 9;
+      const normY = 90 - ((val - minVal) / range) * 80;
+      return `${x},${normY}`;
+    });
+    
+    return `M ${points.join(' L ')}`;
+  };
+
   // Dynamic SVG Paths for FFT Graph based on time range and tampering state
   const getGraphPath = () => {
+    if (activePrediction && activePrediction.feature_snapshot) {
+      return getDynamicGraphPath(activePrediction.feature_snapshot);
+    }
     if (isTampered) {
       switch (selectedTimeRange) {
         case '0-5s':
@@ -497,9 +578,7 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
               {isTampered ? 'Tampering Detected' : 'Nominal Feed'}
             </h3>
             <p className="text-xs sm:text-sm text-slate-300 font-['SF_Pro_Text'] leading-relaxed">
-              {isTampered 
-                ? 'Strong evidence of lens obstruction / physical interference detected in the surveillance feed.' 
-                : 'No evidence of lens obstruction or physical interference detected in the surveillance feed.'}
+              {displayRationale}
             </p>
           </div>
 
@@ -509,10 +588,10 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
             <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-1">
               <span className="text-[11px] text-slate-400 font-['SF_Pro_Text'] block">Confidence</span>
               <span className="text-2xl font-extrabold text-white font-['SF_Pro_Display'] block">
-                {isTampered ? '98.6%' : '99.2%'}
+                {(displayConfidence * 100).toFixed(2)}%
               </span>
               <span className="text-[10px] font-bold text-blue-400 font-mono flex items-center gap-1">
-                <span>🎯 Very High</span>
+                <span>🎯 {activePrediction ? activePrediction.confidence_tier : (isTampered ? 'Very High' : 'Very High')}</span>
               </span>
             </div>
 
@@ -522,7 +601,7 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
               <span className={`text-2xl font-extrabold font-['SF_Pro_Display'] block ${
                 isTampered ? 'text-rose-400' : 'text-emerald-400'
               }`}>
-                {isTampered ? '32%' : '98%'}
+                {Math.round(displayIntegrity * 100)}%
               </span>
               <span className={`text-[10px] font-bold font-mono flex items-center gap-1 ${
                 isTampered ? 'text-rose-400' : 'text-emerald-400'
@@ -533,14 +612,14 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
 
             {/* Box 3 */}
             <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-1">
-              <span className="text-[11px] text-slate-400 font-['SF_Pro_Text'] block">Status</span>
+              <span className="text-[11px] text-slate-400 font-['SF_Pro_Text'] block">Severity</span>
               <span className="text-lg font-bold text-white font-['SF_Pro_Display'] truncate block pt-0.5">
-                {isTampered ? 'Investigating' : 'Verified'}
+                {displaySeverity}
               </span>
               <span className={`text-[10px] font-bold font-mono flex items-center gap-1 ${
                 isTampered ? 'text-amber-400' : 'text-emerald-400'
               }`}>
-                <span>{isTampered ? '📁 Requires Review' : '✅ Passed'}</span>
+                <span>{activePrediction ? (activePrediction.action_required ? '📁 Action Required' : '✅ Verified') : (isTampered ? '📁 Requires Review' : '✅ Passed')}</span>
               </span>
             </div>
           </div>
@@ -560,7 +639,7 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
             <div className="flex items-center gap-2">
               <span className="text-slate-400 font-['SF_Pro_Text']">Risk Level</span>
               <span className={`font-bold flex items-center gap-1 ${isTampered ? 'text-rose-500' : 'text-emerald-400'}`}>
-                <span>{isTampered ? 'High' : 'Low'}</span>
+                <span>{displaySeverity === 'CRITICAL' ? 'Critical' : displaySeverity === 'ELEVATED' ? 'Elevated' : displaySeverity === 'REVIEW' ? 'Moderate' : 'Low'}</span>
                 <ShieldAlert className="w-3.5 h-3.5" />
               </span>
             </div>
@@ -678,35 +757,64 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
 
           {/* SHAP Bars */}
           <div className="space-y-2.5 font-mono text-xs">
-            {[
-              { label: 'High Frequency Energy (280-320 Hz)', value: isTampered ? '+0.42' : '+0.05', width: '85%', positive: isTampered },
-              { label: 'Spectral Entropy', value: isTampered ? '+0.31' : '+0.08', width: '65%', positive: isTampered },
-              { label: 'Edge Consistency', value: isTampered ? '+0.27' : '-0.24', width: '50%', positive: !isTampered },
-              { label: 'Signal Contrast', value: isTampered ? '+0.18' : '-0.19', width: '35%', positive: !isTampered },
-              { label: 'Frequency Dispersion', value: isTampered ? '-0.11' : '-0.32', width: '25%', positive: false },
-              { label: 'Low Frequency Energy (0-50 Hz)', value: isTampered ? '-0.08' : '-0.38', width: '20%', positive: false },
-            ].map((item, idx) => (
-              <div key={idx} className="flex items-center gap-3">
-                <span className="w-52 text-[11px] text-slate-300 truncate font-['SF_Pro_Text']">{item.label}</span>
-                <div className="flex-1 h-3.5 bg-black/50 rounded-full overflow-hidden relative border border-white/5">
-                  <div 
-                    style={{ width: item.width }} 
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      item.positive 
-                        ? (isTampered ? 'bg-gradient-to-r from-rose-700 to-rose-500' : 'bg-gradient-to-r from-emerald-600 to-cyan-500')
-                        : 'bg-blue-600/80'
-                    }`}
-                  />
+            {activePrediction && activePrediction.shap_attributions ? (
+              activePrediction.shap_attributions.map((item, idx) => {
+                const absoluteWeight = Math.abs(item.weight);
+                const maxWeight = Math.max(...activePrediction.shap_attributions.map(a => Math.abs(a.weight)), 1e-6);
+                const widthPercentage = Math.min(100, Math.round((absoluteWeight / maxWeight) * 100));
+                const isPositive = item.weight >= 0;
+                return (
+                  <div key={idx} className="flex items-center gap-3">
+                    <span className="w-52 text-[11px] text-slate-300 truncate font-['SF_Pro_Text'] font-mono">{item.factor}</span>
+                    <div className="flex-1 h-3.5 bg-black/50 rounded-full overflow-hidden relative border border-white/5">
+                      <div 
+                        style={{ width: `${Math.max(widthPercentage, 8)}%` }} 
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          isPositive 
+                            ? 'bg-gradient-to-r from-emerald-600 to-cyan-500'
+                            : 'bg-gradient-to-r from-rose-700 to-rose-500'
+                        }`}
+                      />
+                    </div>
+                    <span className={`w-16 text-right font-mono font-bold text-[11px] ${
+                      isPositive ? 'text-emerald-400' : 'text-rose-400'
+                    }`}>
+                      {item.weight >= 0 ? '+' : ''}{item.weight.toFixed(4)}
+                    </span>
+                  </div>
+                );
+              })
+            ) : (
+              [
+                { label: 'High Frequency Energy (280-320 Hz)', value: isTampered ? '+0.42' : '+0.05', width: '85%', positive: isTampered },
+                { label: 'Spectral Entropy', value: isTampered ? '+0.31' : '+0.08', width: '65%', positive: isTampered },
+                { label: 'Edge Consistency', value: isTampered ? '+0.27' : '-0.24', width: '50%', positive: !isTampered },
+                { label: 'Signal Contrast', value: isTampered ? '+0.18' : '-0.19', width: '35%', positive: !isTampered },
+                { label: 'Frequency Dispersion', value: isTampered ? '-0.11' : '-0.32', width: '25%', positive: false },
+                { label: 'Low Frequency Energy (0-50 Hz)', value: isTampered ? '-0.08' : '-0.38', width: '20%', positive: false },
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center gap-3">
+                  <span className="w-52 text-[11px] text-slate-300 truncate font-['SF_Pro_Text']">{item.label}</span>
+                  <div className="flex-1 h-3.5 bg-black/50 rounded-full overflow-hidden relative border border-white/5">
+                    <div 
+                      style={{ width: item.width }} 
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        item.positive 
+                          ? (isTampered ? 'bg-gradient-to-r from-rose-700 to-rose-500' : 'bg-gradient-to-r from-emerald-600 to-cyan-500')
+                          : 'bg-blue-600/80'
+                      }`}
+                    />
+                  </div>
+                  <span className={`w-10 text-right font-bold text-[11px] ${
+                    item.positive 
+                      ? (isTampered ? 'text-rose-400' : 'text-emerald-400') 
+                      : 'text-blue-400'
+                  }`}>
+                    {item.value}
+                  </span>
                 </div>
-                <span className={`w-10 text-right font-bold text-[11px] ${
-                  item.positive 
-                    ? (isTampered ? 'text-rose-400' : 'text-emerald-400') 
-                    : 'text-blue-400'
-                }`}>
-                  {item.value}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
           {/* Impact Axis Legend */}
@@ -736,69 +844,91 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
           </div>
 
           <div className="space-y-3 relative z-10">
-            {[
-              {
-                name: 'Spectral Entropy',
-                badge: isTampered ? 'High' : 'Normal',
-                status: isTampered ? 'tampered' : 'normal',
-                icon: Activity
-              },
-              {
-                name: 'Dominant Frequency',
-                badge: 'Normal',
-                status: 'normal',
-                icon: BarChart2
-              },
-              {
-                name: 'Energy Distribution',
-                badge: isTampered ? 'Abnormal' : 'Nominal',
-                status: isTampered ? 'tampered' : 'normal',
-                icon: Zap
-              },
-              {
-                name: 'Edge Consistency',
-                badge: isTampered ? 'Reduced' : 'Optimal',
-                status: isTampered ? 'warning' : 'normal',
-                icon: Layers
-              },
-              {
-                name: 'Texture Uniformity',
-                badge: isTampered ? 'Irregular' : 'Uniform',
-                status: isTampered ? 'warning' : 'normal',
-                icon: Grid
-              },
-              {
-                name: 'Noise Level',
-                badge: 'Normal',
-                status: 'normal',
-                icon: ShieldCheck
-              },
-            ].map((feature, idx) => (
-              <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-black/40 border border-white/5">
-                <div className="flex items-center gap-2.5">
-                  <div className={`p-1.5 rounded-lg border ${
-                    isTampered 
-                      ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' 
-                      : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                  }`}>
-                    <feature.icon className="w-3.5 h-3.5" />
+            {activePrediction && activePrediction.feature_snapshot ? (
+              Object.entries(activePrediction.feature_snapshot).map(([key, val]) => (
+                <div key={key} className="flex items-center justify-between p-2.5 rounded-xl bg-black/40 border border-white/5 font-mono">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`p-1.5 rounded-lg border ${
+                      isTampered 
+                        ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' 
+                        : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                    }`}>
+                      <Zap className="w-3.5 h-3.5" />
+                    </div>
+                    <span className="text-xs font-semibold text-slate-200">
+                      {key}
+                    </span>
                   </div>
-                  <span className="text-xs font-semibold text-slate-200 font-['SF_Pro_Text']">
-                    {feature.name}
+                  <span className="text-xs font-bold text-white">
+                    {val.toFixed(4)}
                   </span>
                 </div>
+              ))
+            ) : (
+              [
+                {
+                  name: 'Spectral Entropy',
+                  badge: isTampered ? 'High' : 'Normal',
+                  status: isTampered ? 'tampered' : 'normal',
+                  icon: Activity
+                },
+                {
+                  name: 'Dominant Frequency',
+                  badge: 'Normal',
+                  status: 'normal',
+                  icon: BarChart2
+                },
+                {
+                  name: 'Energy Distribution',
+                  badge: isTampered ? 'Abnormal' : 'Nominal',
+                  status: isTampered ? 'tampered' : 'normal',
+                  icon: Zap
+                },
+                {
+                  name: 'Edge Consistency',
+                  badge: isTampered ? 'Reduced' : 'Optimal',
+                  status: isTampered ? 'warning' : 'normal',
+                  icon: Layers
+                },
+                {
+                  name: 'Texture Uniformity',
+                  badge: isTampered ? 'Irregular' : 'Uniform',
+                  status: isTampered ? 'warning' : 'normal',
+                  icon: Grid
+                },
+                {
+                  name: 'Noise Level',
+                  badge: 'Normal',
+                  status: 'normal',
+                  icon: ShieldCheck
+                },
+              ].map((feature, idx) => (
+                <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-black/40 border border-white/5">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`p-1.5 rounded-lg border ${
+                      isTampered 
+                        ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' 
+                        : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                    }`}>
+                      <feature.icon className="w-3.5 h-3.5" />
+                    </div>
+                    <span className="text-xs font-semibold text-slate-200 font-['SF_Pro_Text']">
+                      {feature.name}
+                    </span>
+                  </div>
 
-                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
-                  feature.status === 'tampered'
-                    ? 'bg-rose-950/80 text-rose-400 border-rose-500/40'
-                    : feature.status === 'warning'
-                    ? 'bg-amber-950/80 text-amber-400 border-amber-500/40'
-                    : 'bg-emerald-950/80 text-emerald-400 border-emerald-500/40'
-                }`}>
-                  {feature.badge}
-                </span>
-              </div>
-            ))}
+                  <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                    feature.status === 'tampered'
+                      ? 'bg-rose-950/80 text-rose-400 border-rose-500/40'
+                      : feature.status === 'warning'
+                      ? 'bg-amber-950/80 text-amber-400 border-amber-500/40'
+                      : 'bg-emerald-950/80 text-emerald-400 border-emerald-500/40'
+                  }`}>
+                    {feature.badge}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </GlassPressCard>
 
@@ -840,7 +970,7 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
                   stroke={isTampered ? '#3b82f6' : '#06b6d4'}
                   strokeWidth="6"
                   strokeDasharray="251"
-                  strokeDashoffset={isTampered ? '12' : '6'}
+                  strokeDashoffset={251 - (251 * displayConfidence)}
                   strokeLinecap="round"
                   fill="none"
                   style={{
@@ -854,13 +984,13 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
               {/* Center Content */}
               <div className="absolute inset-0 flex flex-col items-center justify-center z-20 select-none">
                 <span className="text-3xl font-extrabold text-white font-['SF_Pro_Display'] tracking-tight">
-                  {isTampered ? '98.6%' : '99.2%'}
+                  {(displayConfidence * 100).toFixed(2)}%
                 </span>
                 <span className="text-xs font-medium text-slate-300 font-['SF_Pro_Text'] mt-1">
                   Confidence
                 </span>
-                <span className="text-[11px] font-bold text-blue-400 font-mono mt-0.5">
-                  Very High
+                <span className="text-[11px] font-bold text-blue-400 font-mono mt-0.5 animate-pulse">
+                  {activePrediction ? activePrediction.confidence_tier : (isTampered ? 'Very High' : 'Very High')}
                 </span>
               </div>
             </div>
@@ -887,13 +1017,13 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
             <div className="absolute top-3 bottom-3 left-3.5 w-0.5 bg-purple-500/30 z-0" />
 
             {[
-              { step: 'Upload Complete', time: '07:22:15 PM', icon: RotateCcw },
-              { step: 'Frame Extraction', time: '07:22:16 PM', icon: CheckCircle2 },
-              { step: 'FFT Analysis', time: '07:22:18 PM', icon: Zap },
-              { step: 'Feature Extraction', time: '07:22:19 PM', icon: CheckCircle2 },
-              { step: 'Random Forest Inference', time: '07:22:20 PM', icon: CheckCircle2 },
-              { step: 'SHAP Explanation Generated', time: '07:22:21 PM', icon: CheckCircle2 },
-              { step: 'Prediction Completed', time: '07:22:21 PM', icon: CheckCircle2 },
+              { step: 'Upload Complete', time: activePrediction ? new Date(new Date(activePrediction.timestamp).getTime() - 6000).toLocaleTimeString() : '07:22:15 PM', icon: RotateCcw },
+              { step: 'Frame Extraction', time: activePrediction ? new Date(new Date(activePrediction.timestamp).getTime() - 5000).toLocaleTimeString() : '07:22:16 PM', icon: CheckCircle2 },
+              { step: 'FFT Analysis', time: activePrediction ? new Date(new Date(activePrediction.timestamp).getTime() - 3000).toLocaleTimeString() : '07:22:18 PM', icon: Zap },
+              { step: 'Feature Extraction', time: activePrediction ? new Date(new Date(activePrediction.timestamp).getTime() - 2000).toLocaleTimeString() : '07:22:19 PM', icon: CheckCircle2 },
+              { step: 'XGBoost Inference', time: activePrediction ? new Date(new Date(activePrediction.timestamp).getTime() - 1000).toLocaleTimeString() : '07:22:20 PM', icon: CheckCircle2 },
+              { step: 'SHAP Explanation Generated', time: activePrediction ? new Date(new Date(activePrediction.timestamp).getTime() - 500).toLocaleTimeString() : '07:22:21 PM', icon: CheckCircle2 },
+              { step: 'Prediction Completed', time: activePrediction ? new Date(activePrediction.timestamp).toLocaleTimeString() : '07:22:21 PM', icon: CheckCircle2 },
             ].map((item, idx) => (
               <div key={idx} className="relative z-10 flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -978,12 +1108,17 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
 
           {/* Action List */}
           <div className="space-y-3 font-['SF_Pro_Text'] text-xs sm:text-sm text-slate-200 my-auto">
-            {[
+            {(isTampered ? [
               'Physically inspect the camera for obstruction or damage.',
               'Compare with previous frames or baseline capture.',
-              'Continue with detailed camera diagnostics if available.',
-              'Archive this forensic report for audit and reference.'
-            ].map((action, idx) => (
+              'Initiate detailed security diagnostics for this channel.',
+              `Archive this forensic report under prediction ID: ${activePrediction ? activePrediction.prediction_id.substring(0, 12) : 'N/A'}`
+            ] : [
+              'Standard surveillance stream remains in fully nominal state.',
+              'No physical check or camera maintenance required.',
+              'System integrity verified with active model thresholds.',
+              'Archive report under standard verification logs.'
+            ]).map((action, idx) => (
               <div key={idx} className="flex items-center gap-3">
                 <div className="w-7 h-7 rounded-lg bg-purple-950/80 border border-purple-500/30 text-purple-300 flex items-center justify-center shrink-0 shadow-md">
                   <FileText className="w-3.5 h-3.5 text-purple-400" />

@@ -13,7 +13,7 @@ import {
   Video,
   X
 } from 'lucide-react';
-import type { AITool } from '../types';
+import type { AITool, CameraFeedItem } from '../types';
 
 // Helper component for 3D glass press push effect and dark blue flow on hover
 const GlassPressCard: React.FC<{
@@ -82,7 +82,10 @@ const GlassPressCard: React.FC<{
 };
 
 import { FootageUploadModal } from './FootageUploadModal';
-import type { CameraFeedItem } from '../types';
+import { useDashboardSummary } from '../hooks/useDashboardSummary';
+import { useEvents } from '../hooks/useEvents';
+import { usePredictionHistory } from '../hooks/usePredictionHistory';
+import { useNavigate } from 'react-router-dom';
 
 interface ToolInsightsSectionProps {
   onSelectTool?: (tool: AITool) => void;
@@ -95,6 +98,11 @@ export const ToolInsightsSection: React.FC<ToolInsightsSectionProps> = ({
   onViewAllRecentlyAdded,
   onNavigateToCameras
 }) => {
+  const navigate = useNavigate();
+  const { summary, refetch: refetchSummary } = useDashboardSummary();
+  const { events: rawEvents, refetch: refetchEvents } = useEvents();
+  const { history: predictionHistory, refetch: refetchHistory } = usePredictionHistory();
+
   // On-Demand Verification Interactive State
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [uploadedFileObj, setUploadedFileObj] = useState<File | null>(null);
@@ -103,98 +111,268 @@ export const ToolInsightsSection: React.FC<ToolInsightsSectionProps> = ({
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Timeline events for "Recent Camera Activity"
-  const recentActivityEvents = [
-    {
-      id: 'act-1',
-      time: '09:42 AM',
-      camera: 'Lobby Entrance',
-      status: 'Integrity Verified',
-      statusColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
-      description: 'Camera operating normally.',
-      imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=200&q=80',
-    },
-    {
-      id: 'act-2',
-      time: '09:37 AM',
-      camera: 'Warehouse Gate',
-      status: 'Blur Detected',
-      statusColor: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
-      description: 'Optical degradation detected.',
-      imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=200&q=80',
-    },
-    {
-      id: 'act-3',
-      time: '09:31 AM',
-      camera: 'Parking Zone B',
-      status: 'Lens Obstruction',
-      statusColor: 'text-rose-400 bg-rose-500/10 border-rose-500/30',
-      description: 'Immediate inspection recommended.',
-      imageUrl: 'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=200&q=80',
-    },
-    {
-      id: 'act-4',
-      time: '09:25 AM',
-      camera: 'Main Corridor',
-      status: 'Integrity Verified',
-      statusColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
-      description: 'No anomalies detected.',
-      imageUrl: 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=200&q=80',
-    },
-    {
-      id: 'act-5',
-      time: '09:18 AM',
-      camera: 'Server Room',
-      status: 'Signal Restored',
-      statusColor: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
-      description: 'Camera connection successfully re-established.',
-      imageUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=200&q=80',
-    },
-  ];
+  // Timeline events for "Recent Camera Activity" mapped from backend
+  const displayEvents = React.useMemo(() => {
+    const defaultActivity = [
+      {
+        id: 'act-1',
+        time: '09:42 AM',
+        camera: 'Lobby Entrance',
+        status: 'Integrity Verified',
+        statusColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+        description: 'Camera operating normally.',
+        imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=200&q=80',
+      },
+      {
+        id: 'act-2',
+        time: '09:37 AM',
+        camera: 'Warehouse Gate',
+        status: 'Blur Detected',
+        statusColor: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
+        description: 'Optical degradation detected.',
+        imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=200&q=80',
+      },
+      {
+        id: 'act-3',
+        time: '09:31 AM',
+        camera: 'Parking Zone B',
+        status: 'Lens Obstruction',
+        statusColor: 'text-rose-400 bg-rose-500/10 border-rose-500/30',
+        description: 'Immediate inspection recommended.',
+        imageUrl: 'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=200&q=80',
+      },
+      {
+        id: 'act-4',
+        time: '09:25 AM',
+        camera: 'Main Corridor',
+        status: 'Integrity Verified',
+        statusColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+        description: 'No anomalies detected.',
+        imageUrl: 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=200&q=80',
+      },
+      {
+        id: 'act-5',
+        time: '09:18 AM',
+        camera: 'Server Room',
+        status: 'Signal Restored',
+        statusColor: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
+        description: 'Camera connection successfully re-established.',
+        imageUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=200&q=80',
+      },
+    ];
 
-  // Integrity Events Data for Section 3
-  const integrityEvents = [
-    {
-      id: 'evt-1',
-      time: '09:41 AM',
-      cameraName: 'Lobby Entrance',
-      status: 'Tampering Suspected',
-      dot: '🔴',
-      statusStyle: 'text-rose-400 bg-rose-500/10 border-rose-500/30',
-      relativeTime: '2 min ago',
-      imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=200&q=80',
-    },
-    {
-      id: 'evt-2',
-      time: '09:32 AM',
-      cameraName: 'Warehouse Gate',
-      status: 'Blur Detected',
-      dot: '🟡',
-      statusStyle: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
-      relativeTime: '10 min ago',
-      imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=200&q=80',
-    },
-    {
-      id: 'evt-3',
-      time: '09:14 AM',
-      cameraName: 'Main Corridor',
-      status: 'Nominal',
-      dot: '🟢',
-      statusStyle: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
-      relativeTime: '28 min ago',
-      imageUrl: 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=200&q=80',
-    },
-    {
-      id: 'evt-4',
-      time: '08:58 AM',
-      cameraName: 'Parking Zone B',
-      status: 'Integrity Restored',
-      dot: '🟢',
-      statusStyle: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30',
-      relativeTime: '44 min ago',
-      imageUrl: 'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=200&q=80',
-    },
-  ];
+    if (!rawEvents || rawEvents.length === 0) return defaultActivity;
+
+    return rawEvents.map((evt, idx) => {
+      const statusColor = evt.status === 'online'
+        ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
+        : evt.status === 'anomalous'
+        ? 'text-rose-400 bg-rose-500/10 border-rose-500/30'
+        : 'text-amber-400 bg-amber-500/10 border-amber-500/30';
+      
+      const description = evt.event || (evt.status === 'online' ? 'Camera operating normally.' : 'Optical degradation detected.');
+      let imageUrl = 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=200&q=80';
+      if (evt.camera === 'Warehouse Gate') {
+        imageUrl = 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=200&q=80';
+      } else if (evt.camera === 'Parking Zone B') {
+        imageUrl = 'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=200&q=80';
+      } else if (evt.camera === 'Main Corridor') {
+        imageUrl = 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=200&q=80';
+      }
+
+      return {
+        id: evt.id || `act-dyn-${idx}`,
+        time: evt.time || '09:42 AM',
+        camera: evt.camera || 'Unknown Feed',
+        status: evt.event || (evt.status === 'online' ? 'Integrity Verified' : 'Anomalous'),
+        statusColor,
+        description,
+        imageUrl,
+      };
+    });
+  }, [rawEvents]);
+
+  // Mapped Integrity Events Data for Section 3
+  const displayIntegrityEvents = React.useMemo(() => {
+    const defaultIntegrity = [
+      {
+        id: 'evt-1',
+        time: '09:41 AM',
+        cameraName: 'Lobby Entrance',
+        status: 'Tampering Suspected',
+        dot: '🔴',
+        statusStyle: 'text-rose-400 bg-rose-500/10 border-rose-500/30',
+        relativeTime: '2 min ago',
+        imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=200&q=80',
+      },
+      {
+        id: 'evt-2',
+        time: '09:32 AM',
+        cameraName: 'Warehouse Gate',
+        status: 'Blur Detected',
+        dot: '🟡',
+        statusStyle: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
+        relativeTime: '10 min ago',
+        imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=200&q=80',
+      },
+      {
+        id: 'evt-3',
+        time: '09:14 AM',
+        cameraName: 'Main Corridor',
+        status: 'Nominal',
+        dot: '🟢',
+        statusStyle: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+        relativeTime: '28 min ago',
+        imageUrl: 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=200&q=80',
+      },
+      {
+        id: 'evt-4',
+        time: '08:58 AM',
+        cameraName: 'Parking Zone B',
+        status: 'Integrity Restored',
+        dot: '🟢',
+        statusStyle: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30',
+        relativeTime: '44 min ago',
+        imageUrl: 'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=200&q=80',
+      },
+    ];
+
+    if (!predictionHistory || predictionHistory.length === 0) return defaultIntegrity;
+
+    return predictionHistory.slice(0, 4).map((pred) => {
+      const isNominal = pred.prediction === 'nominal';
+      const status = isNominal ? 'Nominal' : 'Tampering Suspected';
+      const dot = isNominal ? '🟢' : '🔴';
+      const statusStyle = isNominal 
+        ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
+        : 'text-rose-400 bg-rose-500/10 border-rose-500/30';
+      
+      const timeStr = new Date(pred.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      let imageUrl = 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=200&q=80';
+      if (pred.camera === 'Warehouse Gate') {
+        imageUrl = 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=200&q=80';
+      }
+
+      return {
+        id: pred.prediction_id,
+        time: timeStr,
+        cameraName: pred.camera || 'Unknown Camera',
+        status,
+        dot,
+        statusStyle,
+        relativeTime: 'Just now',
+        imageUrl
+      };
+    });
+  }, [predictionHistory]);
+
+  const modalIntegrityEvents = React.useMemo(() => {
+    const defaultModalLogs = [
+      {
+        id: 'modal-evt-1',
+        time: '09:41 AM',
+        cameraName: 'Lobby Entrance (CAM-01)',
+        status: 'Tampering Suspected',
+        dot: '🔴',
+        statusStyle: 'text-rose-400 bg-rose-500/10 border-rose-500/30',
+        relativeTime: '2 min ago',
+        details: 'Sudden luminance variation detected on channel 01.'
+      },
+      {
+        id: 'modal-evt-2',
+        time: '09:32 AM',
+        cameraName: 'Warehouse Gate (CAM-02)',
+        status: 'Blur Detected',
+        dot: '🟡',
+        statusStyle: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
+        relativeTime: '10 min ago',
+        details: 'Focus degradation flag triggered in sub-pixel check.'
+      },
+      {
+        id: 'modal-evt-3',
+        time: '09:14 AM',
+        cameraName: 'Main Corridor (CAM-04)',
+        status: 'Nominal',
+        dot: '🟢',
+        statusStyle: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+        relativeTime: '28 min ago',
+        details: 'Frame frequency check passed. No anomalies.'
+      },
+      {
+        id: 'modal-evt-4',
+        time: '08:55 AM',
+        cameraName: 'Parking Zone B (CAM-03)',
+        status: 'Lens Obstruction',
+        dot: '🔴',
+        statusStyle: 'text-rose-400 bg-rose-500/10 border-rose-500/30',
+        relativeTime: '47 min ago',
+        details: 'Partial lens blocking flag identified at 08:55:12.'
+      },
+      {
+        id: 'modal-evt-5',
+        time: '08:30 AM',
+        cameraName: 'Server Room (CAM-05)',
+        status: 'Signal Restored',
+        dot: '🔵',
+        statusStyle: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
+        relativeTime: '1 hr ago',
+        details: 'Re-established sync after brief power cycle.'
+      },
+      {
+        id: 'modal-evt-6',
+        time: '08:12 AM',
+        cameraName: 'Substation B-West (CAM-19)',
+        status: 'Nominal',
+        dot: '🟢',
+        statusStyle: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+        relativeTime: '1.5 hrs ago',
+        details: 'Automated 12-hour optical integrity scan passed.'
+      },
+      {
+        id: 'modal-evt-7',
+        time: '07:45 AM',
+        cameraName: 'Perimeter Fence South (CAM-08)',
+        status: 'Motion Anomaly',
+        dot: '🟡',
+        statusStyle: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
+        relativeTime: '2 hrs ago',
+        details: 'High-frequency vibration detected along perimeter mount.'
+      },
+      {
+        id: 'modal-evt-8',
+        time: '07:10 AM',
+        cameraName: 'Loading Dock C (CAM-12)',
+        status: 'Nominal',
+        dot: '🟢',
+        statusStyle: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+        relativeTime: '2.5 hrs ago',
+        details: 'Optical clarity verified at 99.7% efficiency.'
+      }
+    ];
+
+    if (!predictionHistory || predictionHistory.length === 0) return defaultModalLogs;
+
+    return predictionHistory.map((pred) => {
+      const isNominal = pred.prediction === 'nominal';
+      const status = isNominal ? 'Nominal' : 'Tampering Suspected';
+      const dot = isNominal ? '🟢' : '🔴';
+      const statusStyle = isNominal 
+        ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
+        : 'text-rose-400 bg-rose-500/10 border-rose-500/30';
+      
+      const timeStr = new Date(pred.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return {
+        id: pred.prediction_id,
+        time: timeStr,
+        cameraName: `${pred.camera} (${pred.prediction_id.split('_')[0]})`,
+        status,
+        dot,
+        statusStyle,
+        relativeTime: 'Just now',
+        details: pred.rationale || 'Surveillance Physics scan completed.'
+      };
+    });
+  }, [predictionHistory]);
 
   // Handle file select and trigger prediction modal
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -215,11 +393,16 @@ export const ToolInsightsSection: React.FC<ToolInsightsSectionProps> = ({
     }
   };
 
-  const handlePredictionModalComplete = (newCamera: CameraFeedItem) => {
+  const handlePredictionModalComplete = (predictionId: string) => {
     setIsUploadModalOpen(false);
-    if (onNavigateToCameras) {
-      onNavigateToCameras(newCamera);
-    }
+    
+    // Invalidate/refresh dashboard telemetry in the background
+    refetchSummary();
+    refetchEvents();
+    refetchHistory();
+    
+    // Navigate immediately to the newly generated prediction view
+    navigate(`/cameras/analysis/${predictionId}`);
   };
 
   return (
@@ -244,7 +427,9 @@ export const ToolInsightsSection: React.FC<ToolInsightsSectionProps> = ({
           <GlassPressCard className="p-4 cursor-pointer" id="kpi-system-integrity">
             <span className="text-xs text-slate-400 font-medium font-['SF_Pro_Text']">System Integrity</span>
             <div className="flex items-baseline gap-2 mt-1 mb-1.5">
-              <span className="text-2xl sm:text-3xl font-extrabold text-white font-['SF_Pro_Display']">98.6%</span>
+              <span className="text-2xl sm:text-3xl font-extrabold text-white font-['SF_Pro_Display']">
+                {summary ? `${(summary.systemIntegrity * 100).toFixed(1)}%` : '98.6%'}
+              </span>
             </div>
             <div className="flex items-center justify-between text-[11px] font-['SF_Pro_Text']">
               <span className="text-slate-400">Overall camera integrity</span>
@@ -259,7 +444,9 @@ export const ToolInsightsSection: React.FC<ToolInsightsSectionProps> = ({
           <GlassPressCard className="p-4 cursor-pointer" id="kpi-active-cameras">
             <span className="text-xs text-slate-400 font-medium font-['SF_Pro_Text']">Active Cameras</span>
             <div className="flex items-baseline gap-2 mt-1 mb-1.5">
-              <span className="text-2xl sm:text-3xl font-extrabold text-white font-['SF_Pro_Display']">24</span>
+              <span className="text-2xl sm:text-3xl font-extrabold text-white font-['SF_Pro_Display']">
+                {summary ? summary.activeCameras : '24'}
+              </span>
             </div>
             <div className="flex items-center justify-between text-[11px] font-['SF_Pro_Text']">
               <span className="text-slate-400">Currently monitored</span>
@@ -274,7 +461,9 @@ export const ToolInsightsSection: React.FC<ToolInsightsSectionProps> = ({
           <GlassPressCard className="p-4 cursor-pointer" id="kpi-integrity-alerts">
             <span className="text-xs text-slate-400 font-medium font-['SF_Pro_Text']">Integrity Alerts</span>
             <div className="flex items-baseline gap-2 mt-1 mb-1.5">
-              <span className="text-2xl sm:text-3xl font-extrabold text-white font-['SF_Pro_Display']">2</span>
+              <span className="text-2xl sm:text-3xl font-extrabold text-white font-['SF_Pro_Display']">
+                {summary ? summary.integrityAlerts : '2'}
+              </span>
             </div>
             <div className="flex items-center justify-between text-[11px] font-['SF_Pro_Text']">
               <span className="text-slate-400">Require investigation</span>
@@ -288,7 +477,9 @@ export const ToolInsightsSection: React.FC<ToolInsightsSectionProps> = ({
           <GlassPressCard className="p-4 cursor-pointer" id="kpi-predictions-today">
             <span className="text-xs text-slate-400 font-medium font-['SF_Pro_Text']">Predictions Today</span>
             <div className="flex items-baseline gap-2 mt-1 mb-1.5">
-              <span className="text-2xl sm:text-3xl font-extrabold text-white font-['SF_Pro_Display']">18</span>
+              <span className="text-2xl sm:text-3xl font-extrabold text-white font-['SF_Pro_Display']">
+                {summary ? summary.predictionsToday : '18'}
+              </span>
             </div>
             <div className="flex items-center justify-between text-[11px] font-['SF_Pro_Text']">
               <span className="text-slate-400">Completed analyses</span>
@@ -317,7 +508,7 @@ export const ToolInsightsSection: React.FC<ToolInsightsSectionProps> = ({
 
               {/* Event List / Timeline */}
               <div className="space-y-3.5 divide-y divide-white/5">
-                {recentActivityEvents.map((event) => (
+                {displayEvents.map((event) => (
                   <div key={event.id} className="pt-3 first:pt-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2 group/event">
                     
                     {/* Time, Icon & Camera Name */}
@@ -479,11 +670,17 @@ export const ToolInsightsSection: React.FC<ToolInsightsSectionProps> = ({
 
         {/* Compact Event Table Feed */}
         <div className="space-y-2.5">
-          {integrityEvents.map((evt) => (
+          {displayIntegrityEvents.map((evt) => (
             <GlassPressCard
               key={evt.id}
               id={`integrity-event-${evt.id}`}
-              onClick={() => alert(`Opening surveillance event logs for ${evt.cameraName}...`)}
+              onClick={() => {
+                if (evt.id.startsWith('evt-')) {
+                  alert(`Opening surveillance event logs for ${evt.cameraName}...`);
+                } else {
+                  navigate(`/predictions`);
+                }
+              }}
               className="p-3.5 sm:p-4 cursor-pointer"
             >
               <div className="flex items-center justify-between gap-3 sm:gap-4 text-xs sm:text-sm font-['SF_Pro_Text']">
@@ -564,88 +761,7 @@ export const ToolInsightsSection: React.FC<ToolInsightsSectionProps> = ({
 
             {/* Modal Body / Events List */}
             <div className="p-4 sm:p-5 overflow-y-auto space-y-3 flex-1">
-              {[
-                {
-                  id: 'modal-evt-1',
-                  time: '09:41 AM',
-                  cameraName: 'Lobby Entrance (CAM-01)',
-                  status: 'Tampering Suspected',
-                  dot: '🔴',
-                  statusStyle: 'text-rose-400 bg-rose-500/10 border-rose-500/30',
-                  relativeTime: '2 min ago',
-                  details: 'Sudden luminance variation detected on channel 01.'
-                },
-                {
-                  id: 'modal-evt-2',
-                  time: '09:32 AM',
-                  cameraName: 'Warehouse Gate (CAM-02)',
-                  status: 'Blur Detected',
-                  dot: '🟡',
-                  statusStyle: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
-                  relativeTime: '10 min ago',
-                  details: 'Focus degradation flag triggered in sub-pixel check.'
-                },
-                {
-                  id: 'modal-evt-3',
-                  time: '09:14 AM',
-                  cameraName: 'Main Corridor (CAM-04)',
-                  status: 'Nominal',
-                  dot: '🟢',
-                  statusStyle: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
-                  relativeTime: '28 min ago',
-                  details: 'Frame frequency check passed. No anomalies.'
-                },
-                {
-                  id: 'modal-evt-4',
-                  time: '08:55 AM',
-                  cameraName: 'Parking Zone B (CAM-03)',
-                  status: 'Lens Obstruction',
-                  dot: '🔴',
-                  statusStyle: 'text-rose-400 bg-rose-500/10 border-rose-500/30',
-                  relativeTime: '47 min ago',
-                  details: 'Partial lens blocking flag identified at 08:55:12.'
-                },
-                {
-                  id: 'modal-evt-5',
-                  time: '08:30 AM',
-                  cameraName: 'Server Room (CAM-05)',
-                  status: 'Signal Restored',
-                  dot: '🔵',
-                  statusStyle: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
-                  relativeTime: '1 hr ago',
-                  details: 'Re-established sync after brief power cycle.'
-                },
-                {
-                  id: 'modal-evt-6',
-                  time: '08:12 AM',
-                  cameraName: 'Substation B-West (CAM-19)',
-                  status: 'Nominal',
-                  dot: '🟢',
-                  statusStyle: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
-                  relativeTime: '1.5 hrs ago',
-                  details: 'Automated 12-hour optical integrity scan passed.'
-                },
-                {
-                  id: 'modal-evt-7',
-                  time: '07:45 AM',
-                  cameraName: 'Perimeter Fence South (CAM-08)',
-                  status: 'Motion Anomaly',
-                  dot: '🟡',
-                  statusStyle: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
-                  relativeTime: '2 hrs ago',
-                  details: 'High-frequency vibration detected along perimeter mount.'
-                },
-                {
-                  id: 'modal-evt-8',
-                  time: '07:10 AM',
-                  cameraName: 'Loading Dock C (CAM-12)',
-                  status: 'Nominal',
-                  dot: '🟢',
-                  statusStyle: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
-                  relativeTime: '2.5 hrs ago',
-                  details: 'Optical clarity verified at 99.7% efficiency.'
-                }
-              ].map((evt) => (
+              {modalIntegrityEvents.map((evt) => (
                 <div 
                   key={evt.id}
                   className="p-3.5 rounded-xl bg-white/5 border border-white/10 hover:border-blue-500/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm font-['SF_Pro_Text']"

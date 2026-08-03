@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { apiClient } from '../api/client';
+import { useAuthContext } from '../context/AuthContext';
 
 export interface UserProfile {
   name?: string;
@@ -9,34 +8,14 @@ export interface UserProfile {
 }
 
 export const useUser = () => {
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user, isLoading } = useAuthContext();
 
-  useEffect(() => {
-    let mounted = true;
-    setIsLoading(true);
-    setError(null);
+  const userProfile: UserProfile | null = user ? {
+    name: user.displayName,
+    username: user.username,
+    role: user.role,
+    avatar: user.avatar ?? undefined
+  } : null;
 
-    apiClient<UserProfile>('/me')
-      .then((data) => {
-        if (mounted) {
-          setUser(data);
-          setIsLoading(false);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to fetch authenticated user info:', err);
-        if (mounted) {
-          setError(err.message || 'Failed to fetch operator information');
-          setIsLoading(false);
-        }
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  return { user, isLoading, error };
+  return { user: userProfile, isLoading, error: null };
 };

@@ -68,3 +68,31 @@ export interface CameraFeedItem {
   historyScores?: { label: string; score: number }[];
 }
 
+export interface PredictionSession {
+  prediction_id: string;
+  status: 'queued' | 'running' | 'completed' | 'failed' | string;
+  filename: string;
+  file_path: string;
+  camera: string;
+  operator: string;
+  timestamp: string;
+  prediction: 'nominal' | 'tampering_suspected';
+  confidence: number;
+  confidence_tier: string;
+  severity: string;
+  action_required: boolean;
+  rationale: string;
+  shap_attributions: { factor: string; weight: number }[];
+  feature_snapshot: Record<string, number>;
+  latency_ms: number;
+  
+  user_id?: string;
+  uploaded_filename?: string;
+  uploaded_at?: string;
+  processing_time_ms?: number;
+  model_version?: string;
+  camera_type?: string;
+  original_media_path?: string;
+  generated_report_path?: string;
+}
+

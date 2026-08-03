@@ -29,8 +29,8 @@ export const usePrediction = () => {
 
       const getBaseUrl = (): string => {
         const envUrl = import.meta.env.VITE_API_BASE_URL;
-        if (!envUrl) return 'http://localhost:8000/api/v1';
-        return envUrl.endsWith('/api/v1') ? envUrl : `${envUrl}/api/v1`;
+        if (envUrl) return envUrl.endsWith('/api/v1') ? envUrl : `${envUrl}/api/v1`;
+        return 'http://localhost:8000/api/v1';
       };
       const baseUrl = getBaseUrl();
 

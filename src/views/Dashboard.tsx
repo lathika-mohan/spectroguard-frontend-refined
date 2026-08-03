@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { useCameras } from '../hooks/useCameras';
 import type { CategoryType, AITool, NotificationItem, CameraFeedItem } from '../types';
 import { INITIAL_TOOLS, INITIAL_NOTIFICATIONS } from '../data/toolsData';
+import { INITIAL_CAMERAS } from '../data/camerasData';
 import { Header } from '../components/Header';
 import { Sidebar } from '../components/Sidebar';
 import { HeroBanner } from '../components/HeroBanner';
@@ -50,7 +51,7 @@ export default function Dashboard({ defaultTab = 'Dashboard' }: DashboardProps) 
 
   // Map backend raw cameras data to front-end schema
   const camerasList = useMemo<CameraFeedItem[]>(() => {
-    if (!rawCameras || rawCameras.length === 0) return [];
+    if (!rawCameras || rawCameras.length === 0) return INITIAL_CAMERAS;
     return rawCameras.map((c) => ({
       id: c.id,
       name: c.name,
@@ -66,7 +67,7 @@ export default function Dashboard({ defaultTab = 'Dashboard' }: DashboardProps) 
       lastPrediction: 'Recently',
       connection: 'Stable',
       stream: 'Active',
-      imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80',
+      imageUrl: c.thumbnail || 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80',
       timestamp: new Date().toLocaleTimeString(),
       predictionDetail: c.status === 'anomalous' ? 'Anomalous tamper signatures detected.' : 'Camera integrity nominal.'
     }));
@@ -333,9 +334,9 @@ export default function Dashboard({ defaultTab = 'Dashboard' }: DashboardProps) 
           onClose={() => setIsDirectUploadOpen(false)}
           fileName="surveillance_footage_analysis.mp4"
           fileObj={null}
-          onRunPrediction={(newCamera) => {
+          onRunPrediction={(predictionId) => {
             setIsDirectUploadOpen(false);
-            handleNavigateToPredictionWithNewFeed(newCamera);
+            navigate(`/cameras/analysis/${predictionId}`);
           }}
         />
 

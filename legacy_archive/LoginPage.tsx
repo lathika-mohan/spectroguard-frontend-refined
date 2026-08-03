@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, Component, type ReactNode } from "react"
 import { useNavigate } from "react-router-dom"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -6,14 +6,41 @@ import { Button } from "@/components/ui/button"
 import { Spotlight } from "@/components/ui/spotlight"
 import { SplineScene } from "@/components/ui/splite"
 import { ShieldCheck, Fingerprint } from "lucide-react"
+import { apiClient } from "@/api/client"
 import loginBg from "@/landing_page/assets/images/login_bg.jpg"
+
+class SplineErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="absolute inset-0 flex items-center justify-center bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.12),_transparent_45%),linear-gradient(135deg,_rgba(2,6,23,0.95),_rgba(15,23,42,0.7))]">
+          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-black/30 p-6 text-center backdrop-blur-xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">Secure Operator Access</p>
+            <p className="mt-2 text-sm text-slate-200">The immersive scene is unavailable in this environment, but the operator console remains available.</p>
+          </div>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
 
 export function LoginPage() {
   const navigate = useNavigate()
   const [stage, setStage] = useState<1 | 2 | 3 | 4 | 5>(1)
   const [statusText, setStatusText] = useState("SYSTEM INITIALIZING...")
   const [username, setUsername] = useState("op-4471")
-  const [password, setPassword] = useState("••••••••••••")
+  const [password, setPassword] = useState("spectra")
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [authStatus, setAuthStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
@@ -52,25 +79,11 @@ export function LoginPage() {
     setAuthStatus('idle')
     setIsAuthenticating(true)
 
-    const getBaseUrl = (): string => {
-      const envUrl = import.meta.env.VITE_API_BASE_URL;
-      if (!envUrl) return 'http://localhost:8000/api/v1';
-      return envUrl.endsWith('/api/v1') ? envUrl : `${envUrl}/api/v1`;
-    };
-    const baseUrl = getBaseUrl();
-
-    fetch(`${baseUrl}/auth/login`, {
+    apiClient<{ token?: string; accessToken?: string }>('/auth/login', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
       body: JSON.stringify({ username, password })
     })
-    .then(async (res) => {
-      if (!res.ok) {
-        throw new Error('Authentication rejected by backend.');
-      }
-      const data = await res.json();
+    .then((data) => {
       const token = data.token || data.accessToken || 'spectraguard_secure_validation_token_xyz';
       
       // Store token variables to satisfy all routing and api client expectations
@@ -158,10 +171,12 @@ export function LoginPage() {
       {/* Layer 1: Live Animated Robot Background */}
       <div className="absolute inset-0 w-full h-full z-20 overflow-hidden flex items-center justify-center">
         <div className="w-full h-full" style={robotStyle}>
-          <SplineScene
-            scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
-            className="w-full h-full"
-          />
+          <SplineErrorBoundary>
+            <SplineScene
+              scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
+              className="w-full h-full"
+            />
+          </SplineErrorBoundary>
         </div>
       </div>
 
@@ -209,6 +224,9 @@ export function LoginPage() {
                 <p className="mt-2 text-xs sm:text-sm text-ink-dim leading-relaxed">
                   Authenticate to access the SpectraGuard Operator Console and begin monitoring camera integrity across your surveillance infrastructure.
                 </p>
+                <div className="mt-3 p-3 bg-white/5 border border-white/10 rounded-2xl text-[11px] text-slate-300 leading-relaxed font-mono">
+                  <span className="text-cyan-400 font-bold">Operator Info:</span> Username must start with <code className="bg-white/10 px-1 rounded text-cyan-300">OP-</code> (e.g., <code className="text-cyan-300">op-4471</code>). Password is <code className="bg-white/10 px-1 rounded text-cyan-300">spectra</code>.
+                </div>
               </div>
 
               {/* Status Alert Panels */}

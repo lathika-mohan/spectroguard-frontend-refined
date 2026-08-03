@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { GlassPressCard } from './GlassPressCard';
 import { useApp } from '../context/AppContext';
 import type { AccentColor, ThemeMode, Language } from '../context/AppContext';
+import { useAuth } from '../hooks/useAuth';
 import { 
   User, 
   Palette, 
@@ -18,11 +19,13 @@ import {
   BookOpen, 
   ShieldCheck, 
   Sparkles,
-  X
+  X,
+  LogOut
 } from 'lucide-react';
 
 export const SettingsView: React.FC = () => {
   const { theme, setTheme, accentColor, setAccentColor, language, setLanguage, t, accentClasses } = useApp();
+  const { logout } = useAuth();
 
   // Local state for interactive settings
   const [opCode, setOpCode] = useState('OP-2047');
@@ -489,6 +492,37 @@ export const SettingsView: React.FC = () => {
           </div>
         </GlassPressCard>
 
+      </div>
+
+      {/* Logout Action Bar */}
+      <div className="flex justify-center pt-2">
+        <GlassPressCard className={`p-6 max-w-md w-full text-center space-y-4 border ${
+          theme === 'light' 
+            ? 'bg-white/80 border-slate-200 shadow-lg text-slate-900' 
+            : 'border-rose-500/20 bg-rose-950/10 text-white'
+        }`}>
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-rose-400 font-['SF_Pro_Display']">
+              {language === 'hi' ? 'सत्र नियंत्रण' : 'Session Control'}
+            </h3>
+            <p className={`text-xs font-['SF_Pro_Text'] ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'}`}>
+              {language === 'hi'
+                ? 'अपने सक्रिय सुरक्षा ऑपरेटर सत्र को समाप्त करें और लैंडिंग पृष्ठ पर वापस लौटें।'
+                : 'End your active security operator session and return to the main landing page.'}
+            </p>
+          </div>
+          <button
+            onClick={() => logout()}
+            className={`w-full py-3 px-4 rounded-2xl border font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 font-['SF_Pro_Text'] ${
+              theme === 'light'
+                ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-300 shadow-sm shadow-rose-100/50'
+                : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/25'
+            }`}
+          >
+            <LogOut className={`w-4 h-4 ${theme === 'light' ? 'text-rose-600' : 'text-rose-400'}`} />
+            <span>{language === 'hi' ? 'सत्र समाप्त करें (लॉग आउट)' : 'End Session (Log Out)'}</span>
+          </button>
+        </GlassPressCard>
       </div>
 
       {/* Footer Branding */}

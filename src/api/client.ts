@@ -1,9 +1,22 @@
-const getBaseUrl = (): string => {
+let activeBaseUrl = '';
+
+export const getBaseUrl = (): string => {
+  if (activeBaseUrl) return activeBaseUrl;
+
   const envUrl = import.meta.env.VITE_API_BASE_URL;
-  if (!envUrl) return 'http://localhost:8000/api/v1';
-  return envUrl.endsWith('/api/v1') ? envUrl : `${envUrl}/api/v1`;
+  if (envUrl) {
+    activeBaseUrl = envUrl.endsWith('/api/v1') ? envUrl : `${envUrl}/api/v1`;
+    return activeBaseUrl;
+  }
+
+  const savedPort = localStorage.getItem('spectraguard_detected_api_port');
+  if (savedPort) {
+    activeBaseUrl = `http://localhost:${savedPort}/api/v1`;
+    return activeBaseUrl;
+  }
+
+  return 'http://localhost:8000/api/v1';
 };
-const BASE_URL = getBaseUrl();
 
 
 export class ApiError extends Error {
@@ -36,11 +49,43 @@ export const apiClient = async <T>(endpoint: string, options?: RequestInit): Pro
     headers.set('Authorization', `Bearer ${token}`);
   }
 
+  let baseUrl = getBaseUrl();
+  let response: Response;
+
   try {
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    try {
+      response = await fetch(`${baseUrl}${endpoint}`, {
+        ...options,
+        headers,
+      });
+    } catch (error: any) {
+      if (
+        baseUrl.includes('localhost') &&
+        error.name === 'TypeError' &&
+        (error.message === 'Failed to fetch' || error.message.includes('NetworkError'))
+      ) {
+        const is8000 = baseUrl.includes(':8000');
+        const alternatePort = is8000 ? '8080' : '8000';
+        const alternateBaseUrl = `http://localhost:${alternatePort}/api/v1`;
+        
+        console.warn(`Connection to ${baseUrl} failed. Probing alternate port ${alternatePort}...`);
+        
+        try {
+          response = await fetch(`${alternateBaseUrl}${endpoint}`, {
+            ...options,
+            headers,
+          });
+          
+          activeBaseUrl = alternateBaseUrl;
+          localStorage.setItem('spectraguard_detected_api_port', alternatePort);
+          console.log(`Successfully connected to alternate port ${alternatePort}. Config updated.`);
+        } catch (probeError) {
+          throw error;
+        }
+      } else {
+        throw error;
+      }
+    }
 
     if (!response.ok) {
       let errorMessage = `Error ${response.status}: ${response.statusText}`;
