@@ -1,10 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { useCameras } from '../hooks/useCameras';
+import { useCameras, mapRegistryToFeedItems } from '../hooks/useCameras';
 import type { CategoryType, AITool, NotificationItem, CameraFeedItem } from '../types';
 import { INITIAL_TOOLS, INITIAL_NOTIFICATIONS } from '../data/toolsData';
-import { INITIAL_CAMERAS } from '../data/camerasData';
 import { Header } from '../components/Header';
 import { Sidebar } from '../components/Sidebar';
 import { HeroBanner } from '../components/HeroBanner';
@@ -30,7 +29,7 @@ interface DashboardProps {
 export default function Dashboard({ defaultTab = 'Dashboard' }: DashboardProps) {
   const navigate = useNavigate();
   const { theme } = useApp();
-  const { data: rawCameras, refetch: refetchCameras } = useCameras();
+  const { data: rawCameras, registry: cameraRegistry, refetch: refetchCameras } = useCameras();
 
   const [tools, setTools] = useState<AITool[]>(INITIAL_TOOLS);
   const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
@@ -49,29 +48,18 @@ export default function Dashboard({ defaultTab = 'Dashboard' }: DashboardProps) 
   const [currentPredictionCamera, setCurrentPredictionCamera] = useState<CameraFeedItem | null>(null);
   const [isDirectUploadOpen, setIsDirectUploadOpen] = useState<boolean>(false);
 
-  // Map backend raw cameras data to front-end schema
+  // Map the REAL CV Engine camera registry to the front-end schema.
+  // No synthetic fallback rows: if the backend has no cameras yet, the UI
+  // renders honest empty/loading states until the GUI registers one.
   const camerasList = useMemo<CameraFeedItem[]>(() => {
-    if (!rawCameras || rawCameras.length === 0) return INITIAL_CAMERAS;
-    return rawCameras.map((c) => ({
-      id: c.id,
-      name: c.name,
-      location: c.location,
-      building: c.location.split(' ')[0] || 'Main Facility',
-      status: c.status === 'online' ? 'Online' : c.status === 'offline' ? 'Offline' : c.status === 'anomalous' ? 'Tampered' : 'Investigating',
-      integrityScore: Math.round(c.integrityScore * 100),
-      integrityStatus: c.status === 'online' ? 'Nominal' : c.status === 'offline' ? 'Offline' : c.status === 'anomalous' ? 'Tampered' : 'Investigating',
-      resolution: c.resolution || '1920 × 1080',
-      frameRate: `${c.fps || 30} FPS`,
-      codec: 'H.264',
-      lastUpdated: 'Just now',
-      lastPrediction: 'Recently',
-      connection: 'Stable',
-      stream: 'Active',
-      imageUrl: c.thumbnail || 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80',
-      timestamp: new Date().toLocaleTimeString(),
-      predictionDetail: c.status === 'anomalous' ? 'Anomalous tamper signatures detected.' : 'Camera integrity nominal.'
-    }));
-  }, [rawCameras]);
+    if (cameraRegistry && cameraRegistry.length > 0) {
+      return mapRegistryToFeedItems(cameraRegistry);
+    }
+    if (rawCameras && rawCameras.length > 0) {
+      return mapRegistryToFeedItems(rawCameras as unknown as Parameters<typeof mapRegistryToFeedItems>[0]);
+    }
+    return [];
+  }, [rawCameras, cameraRegistry]);
 
   // Set default prediction camera once list is fetched
   useEffect(() => {
@@ -226,6 +214,11 @@ export default function Dashboard({ defaultTab = 'Dashboard' }: DashboardProps) 
                       const cam = camerasList.find(c => c.id === id);
                       if (cam) setCurrentPredictionCamera(cam);
                     }}
+                    onInspectFeed={(camera) => {
+                      setSelectedCameraId(camera.id);
+                      setCurrentPredictionCamera(camera);
+                      navigate(`/live?cameraId=${encodeURIComponent(camera.id)}&name=${encodeURIComponent(camera.name)}`);
+                    }}
                   />
                 ) : searchQuery ? (
                   <div className="space-y-4">
@@ -274,8 +267,15 @@ export default function Dashboard({ defaultTab = 'Dashboard' }: DashboardProps) 
                 ) : (
                   /* Primary Dashboard View: Camera Integrity & Operational Insights */
                   <>
-                    {/* Camera Integrity Overview Section */}
-                    <CameraIntegritySection />
+                    {/* Camera Integrity Overview Section (real registry data) */}
+                    <CameraIntegritySection
+                      cameras={camerasList}
+                      onInspect={(camera) => {
+                        setSelectedCameraId(camera.id);
+                        setCurrentPredictionCamera(camera);
+                        navigate(`/live?cameraId=${encodeURIComponent(camera.id)}&name=${encodeURIComponent(camera.name)}`);
+                      }}
+                    />
 
                     {/* Tool Insights & Recent Integrity Events Section */}
                     <div className="pt-2 border-t border-white/10" id="catalog-grid-section">
@@ -337,6 +337,10 @@ export default function Dashboard({ defaultTab = 'Dashboard' }: DashboardProps) 
           onRunPrediction={(predictionId) => {
             setIsDirectUploadOpen(false);
             navigate(`/cameras/analysis/${predictionId}`);
+          }}
+          onStartLiveAnalysis={(cameraName) => {
+            setIsDirectUploadOpen(false);
+            navigate(`/live?name=${encodeURIComponent(cameraName || '')}`);
           }}
         />
 

@@ -96,3 +96,119 @@ export interface PredictionSession {
   generated_report_path?: string;
 }
 
+// ---------------------------------------------------------------------------
+// LIVE ANALYSIS / CV ENGINE CONTRACTS (real data)
+// ---------------------------------------------------------------------------
+
+/** A camera row from the CV Engine camera registry (real operator-given names). */
+export interface CameraRegistryEntry {
+  id: string;
+  camera_id?: string;
+  name: string;
+  location: string;
+  building?: string;
+  vendor: string;
+  ip_address?: string;
+  port?: number;
+  source: string;
+  status: 'online' | 'offline' | 'anomalous';
+  integrity_score: number;          // 0..1
+  resolution: string;
+  fps: number;
+  last_seen?: string;
+  registered_at?: string;
+  tamper_count?: number;
+  last_event?: string | null;
+  history_scores?: { label: string; score: number }[];
+}
+
+/** Live camera manager telemetry from the CV Engine. */
+export interface LiveCameraStatus {
+  camera_id: string;
+  is_opened: boolean;
+  status: string;
+  fps: number;
+  width: number;
+  height: number;
+  frame_count: number;
+  uptime_seconds: number;
+}
+
+export interface CameraInfo {
+  camera_id: string;
+  opencv_backend: string;
+  camera_source: string;
+  max_fps: number;
+  resolution: string;
+}
+
+/** Result of POST /inference/run (real physics inference engine). */
+export interface InferenceResult {
+  timestamp: string;
+  probability: number;              // probability of tampering class (0..1)
+  prediction: number;               // 0 = Normal, 1 = Tampered
+  confidence: number;
+  threshold: number;
+  latency_ms: number;
+  feature_vector: Record<string, number>;
+  camera_id: string;
+}
+
+/** Result of GET /tamper/latest (real tamper classification event). */
+export interface TamperEventResult {
+  timestamp: string;
+  tamper_type: string;
+  severity: string;
+  confidence: number;
+  triggered_rules: Record<string, number>;
+  explanation: string;
+  deviation_score: number;
+  mahalanobis_distance: number;
+  random_forest_prediction: number;
+  random_forest_probability: number;
+  latency_ms: number;
+}
+
+/** A persisted tamper detection event served by the CV Engine events API. */
+export interface TamperEvent {
+  id: string;
+  uuid: string;
+  camera: string;
+  cameraName: string;
+  event: string;
+  description: string;
+  tamper_type: string;
+  severity: string;
+  confidence: number;
+  probability?: number;
+  status: string;
+  timestamp: string;
+  relativeTime?: string;
+  snapshot_path?: string;
+  snapshot_url?: string;
+  imageUrl?: string;
+  drift_score?: number;
+  notification_delivery_state?: string;
+}
+
+/** Complete live-analysis session handed to the Predict page. */
+export interface LivePredictionSession {
+  predictionId: string;
+  cameraName: string;
+  cameraId: string;
+  timestamp: string;
+  prediction: 'nominal' | 'tampering_suspected';
+  probability: number;
+  confidence: number;
+  threshold: number;
+  severity: string;
+  tamperType: string;
+  rationale: string;
+  latencyMs: number;
+  featureSnapshot: Record<string, number>;
+  snapshotUrl: string | null;      // real tamper screenshot (auth-protected)
+  snapshotBlobUrl?: string;        // in-memory object URL for <img>
+  source: 'live-analysis' | 'upload';
+}
+
+

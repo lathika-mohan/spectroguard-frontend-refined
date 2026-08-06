@@ -32,6 +32,7 @@ import Dashboard from './views/Dashboard';
 import { LoginPage } from '../legacy_archive/LoginPage';
 import LandingPage from './landing_page/App';
 import CameraAnalysis from './views/CameraAnalysis';
+import LiveAnalysisView from './views/LiveAnalysisView';
 
 const LoadingScreen = () => {
   return (
@@ -95,6 +96,7 @@ export default function App() {
                   <Route path="vault" element={<Dashboard defaultTab="Vault" />} />
                   <Route path="settings" element={<Dashboard defaultTab="Settings" />} />
                   <Route path="cameras/analysis/:predictionId" element={<CameraAnalysis />} />
+                  <Route path="live" element={<LiveAnalysisView />} />
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

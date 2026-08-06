@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { BackgroundLoopCanvas } from '../components/BackgroundLoopCanvas';
 import { PredictionAnalysisView } from '../components/PredictionAnalysisView';
+import { liveAnalysisStore } from '../state/liveAnalysisStore';
 import { 
   ShieldAlert, 
   ArrowLeft
@@ -110,6 +111,7 @@ export default function CameraAnalysis() {
           <PredictionAnalysisView 
             prediction={prediction} 
             onNavigateToForensics={() => navigate('/dashboard')}
+            liveSnapshotUrl={liveAnalysisStore.get()?.snapshotBlobUrl ?? null}
           />
         ) : null}
 

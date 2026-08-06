@@ -34,7 +34,6 @@ export const apiClient = async <T>(endpoint: string, options?: RequestInit): Pro
   
   // Use the native Headers API to satisfy TS2322 and gracefully handle all header formats
   const headers = new Headers(options?.headers);
-
   // Default to JSON if not specified and not using FormData
   if (!headers.has('Content-Type') && !(options?.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
@@ -130,5 +129,56 @@ export const apiClient = async <T>(endpoint: string, options?: RequestInit): Pro
     }
     
     throw new Error(error.message || "An unexpected runtime error occurred during the request.");
+  }
+};
+
+/**
+ * apiBlob
+ * Fetches a binary resource (live JPEG frame, tamper screenshot) with the
+ * same base-URL resolution and Authorization header as apiClient, returning
+ * a Blob so callers can build object URLs for <img> / <video> elements.
+ */
+export const apiBlob = async (endpoint: string, options?: RequestInit): Promise<Blob> => {
+  const token = localStorage.getItem('spectraguard_token');
+  const headers = new Headers(options?.headers);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const baseUrl = getBaseUrl();
+  let response: Response;
+
+  try {
+    try {
+      response = await fetch(`${baseUrl}${endpoint}`, { ...options, headers });
+    } catch (error: any) {
+      // Port fallback probe (8000 <-> 8080) identical to apiClient.
+      if (
+        baseUrl.includes('localhost') &&
+        error.name === 'TypeError' &&
+        (error.message === 'Failed to fetch' || error.message.includes('NetworkError'))
+      ) {
+        const is8000 = baseUrl.includes(':8000');
+        const alternatePort = is8000 ? '8080' : '8000';
+        const alternateBaseUrl = `http://localhost:${alternatePort}/api/v1`;
+        try {
+          response = await fetch(`${alternateBaseUrl}${endpoint}`, { ...options, headers });
+          activeBaseUrl = alternateBaseUrl;
+          localStorage.setItem('spectraguard_detected_api_port', alternatePort);
+        } catch {
+          throw error;
+        }
+      } else {
+        throw error;
+      }
+    }
+
+    if (!response.ok) {
+      throw new ApiError(response.status, `Failed to fetch binary resource (${response.status} ${response.statusText}).`);
+    }
+    return await response.blob();
+  } catch (error: any) {
+    if (error instanceof ApiError) throw error;
+    throw new Error(error.message || "Network failure while fetching binary resource.");
   }
 };

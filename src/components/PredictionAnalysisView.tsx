@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import type { CameraFeedItem, PredictionSession } from '../types';
 import { GlassPressCard } from './GlassPressCard';
-import { apiClient } from '../api/client';
+import { apiClient, apiBlob } from '../api/client';
+import { liveAnalysisStore } from '../state/liveAnalysisStore';
 import { 
   Video, 
   ShieldAlert, 
@@ -41,13 +42,16 @@ interface PredictionAnalysisViewProps {
   prediction?: PredictionSession | null;
   onNavigateToForensics?: () => void;
   onNavigateToUploadModal?: () => void;
+  /** Real tamper screenshot (object URL) captured during live analysis. */
+  liveSnapshotUrl?: string | null;
 }
 
 export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
   currentCamera,
   prediction: propPrediction,
   onNavigateToForensics,
-  onNavigateToUploadModal
+  onNavigateToUploadModal,
+  liveSnapshotUrl: propSnapshotUrl
 }) => {
   const [copiedHash, setCopiedHash] = useState(false);
   const [selectedTimeRange, setSelectedTimeRange] = useState<'0-5s' | '5-15s' | '15-22s' | 'Full'>('Full');
@@ -89,26 +93,80 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
 
   const activePrediction = fetchedPrediction || propPrediction;
 
-  // Fallback camera or current analyzed footage data
+  // Fallback camera or current analyzed footage data (neutral placeholders only)
   const cameraData = currentCamera || {
     id: activePrediction ? activePrediction.camera : 'CAM-001',
-    name: activePrediction ? activePrediction.filename : 'warehouse_gate.mp4',
-    location: activePrediction ? 'Lobby Entrance' : 'Warehouse Gate',
+    name: activePrediction ? activePrediction.filename : 'No footage selected',
+    location: activePrediction ? activePrediction.camera : '—',
     building: 'Main Building',
     status: activePrediction ? (activePrediction.prediction === 'tampering_suspected' ? 'Tampered' : 'Online') : 'Online',
-    integrityScore: activePrediction ? Math.round((activePrediction.prediction === 'tampering_suspected' ? (1.0 - activePrediction.confidence) : activePrediction.confidence) * 100) : 32,
-    integrityStatus: activePrediction ? (activePrediction.prediction === 'tampering_suspected' ? 'Tampered' : 'Nominal') : 'Tampered',
-    resolution: '1920 × 1080',
-    frameRate: '30 FPS',
+    integrityScore: activePrediction ? Math.round((activePrediction.prediction === 'tampering_suspected' ? (1.0 - activePrediction.confidence) : activePrediction.confidence) * 100) : 0,
+    integrityStatus: activePrediction ? (activePrediction.prediction === 'tampering_suspected' ? 'Tampered' : 'Nominal') : 'Nominal',
+    resolution: '—',
+    frameRate: '—',
     codec: 'H.264',
     lastUpdated: 'Just now',
-    lastPrediction: activePrediction ? new Date(activePrediction.timestamp).toLocaleString() : 'May 24, 2025 07:22 PM',
+    lastPrediction: activePrediction ? new Date(activePrediction.timestamp).toLocaleString() : '—',
     connection: 'Stable',
     stream: 'Active',
-    imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=800&q=80',
-    timestamp: activePrediction ? new Date(activePrediction.timestamp).toLocaleTimeString() : '07:22:17 PM',
-    predictionDetail: activePrediction ? activePrediction.rationale : 'Strong evidence of lens obstruction / physical interference detected.',
+    imageUrl: '', // real tamper screenshot is supplied via liveSnapshotUrl / store
+    timestamp: activePrediction ? new Date(activePrediction.timestamp).toLocaleTimeString() : '—',
+    predictionDetail: activePrediction ? activePrediction.rationale : 'No analysis data available yet.',
   };
+
+  // ------------------------------------------------------------------ #
+  // REAL SNAPSHOT RESOLUTION
+  // The Predict page shows the actual screenshot captured at the moment of
+  // tampering (from the CV Engine EventService) - never a stock image.
+  // ------------------------------------------------------------------ #
+  const [storeSnapshotUrl, setStoreSnapshotUrl] = useState<string | null>(null);
+  const [autoSnapshotUrl, setAutoSnapshotUrl] = useState<string | null>(null);
+
+  // Subscribe to the live-analysis store (session published by the GUI page).
+  useEffect(() => {
+    const session = liveAnalysisStore.get();
+    if (session?.snapshotBlobUrl) setStoreSnapshotUrl(session.snapshotBlobUrl);
+    const unsubscribe = liveAnalysisStore.subscribe((next) => {
+      setStoreSnapshotUrl(next?.snapshotBlobUrl ?? null);
+    });
+    return unsubscribe;
+  }, []);
+
+  // If nothing was handed to us, pull the most recent REAL tamper screenshot
+  // persisted on disk by the EventService.
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const events = await apiClient<Array<{ uuid: string }>>('/events/latest?limit=1');
+        const latest = events?.[0];
+        if (!latest?.uuid) return;
+        const blob = await apiBlob(`/events/snapshot/${latest.uuid}`);
+        if (!cancelled) setAutoSnapshotUrl(URL.createObjectURL(blob));
+      } catch { /* no detections yet */ }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  const displaySnapshotUrl = propSnapshotUrl || storeSnapshotUrl || autoSnapshotUrl || cameraData.imageUrl || '';
+
+  // Real physics features from the inference engine's feature_snapshot
+  // (8-D vector: fft_low/mid/high_ratio, log_total_energy, laplacian_variance,
+  // edge_density, shannon_entropy, temporal_difference).
+  const features = activePrediction?.feature_snapshot ?? null;
+  const fNum = (key: string): number | null =>
+    features && typeof features[key] === 'number' ? (features[key] as number) : null;
+  const fftLow = fNum('fft_low_ratio');
+  const fftMid = fNum('fft_mid_ratio');
+  const fftHigh = fNum('fft_high_ratio');
+  const logEnergy = fNum('log_total_energy');
+  const lapVar = fNum('laplacian_variance');
+  const entropy = fNum('shannon_entropy');
+  const edgeDensity = fNum('edge_density');
+  const temporalDiff = fNum('temporal_difference');
+
+  const fmt = (v: number | null, digits = 3): string => (v === null ? '—' : v.toFixed(digits));
 
   const handleCopyHash = () => {
     const hash = activePrediction ? activePrediction.prediction_id : 'a7f3c9e821b014d983c20021b21d4f';
@@ -121,23 +179,29 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
     ? activePrediction.prediction === 'tampering_suspected'
     : (cameraData.integrityStatus === 'Tampered' || cameraData.integrityScore < 60);
 
-  const displayConfidence = activePrediction ? activePrediction.confidence : (isTampered ? 0.986 : 0.992);
+  // Honest values only: when there is no real prediction yet we show neutral
+  // "no data" placeholders instead of fabricated confidence numbers.
+  const displayConfidence = activePrediction ? activePrediction.confidence : 0;
   const displayIntegrity = activePrediction
     ? (activePrediction.prediction === 'tampering_suspected' ? (1.0 - activePrediction.confidence) : activePrediction.confidence)
-    : (isTampered ? 0.32 : 0.98);
-  const displayRationale = activePrediction ? activePrediction.rationale : (isTampered ? 'Strong evidence of lens obstruction / physical interference detected.' : 'No evidence of lens obstruction or physical interference detected.');
-  const displayLatency = activePrediction ? activePrediction.latency_ms : 1676.65;
-  const displaySeverity = activePrediction ? activePrediction.severity : (isTampered ? 'CRITICAL' : 'CLEAR');
+    : 0;
+  const displayRationale = activePrediction
+    ? activePrediction.rationale
+    : 'No analysis data available yet. Run a live analysis (Start Analysis) or upload footage to generate a prediction.';
+  const displayLatency = activePrediction ? activePrediction.latency_ms : 0;
+  const displaySeverity = activePrediction ? activePrediction.severity : (isTampered ? 'CRITICAL' : '—');
 
   const handleExportPdf = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    const displayConfidence = activePrediction ? activePrediction.confidence : (isTampered ? 0.986 : 0.992);
+    const displayConfidence = activePrediction ? activePrediction.confidence : 0;
     const displayIntegrity = activePrediction
       ? (activePrediction.prediction === 'tampering_suspected' ? (1.0 - activePrediction.confidence) : activePrediction.confidence)
-      : (isTampered ? 0.32 : 0.98);
-    const displayRationale = activePrediction ? activePrediction.rationale : (isTampered ? 'Strong evidence of lens obstruction / physical interference detected.' : 'No evidence of lens obstruction or physical interference detected.');
+      : 0;
+    const displayRationale = activePrediction
+      ? activePrediction.rationale
+      : 'No analysis data available yet. Run a live analysis or upload footage to generate a prediction.';
 
     const statusColor = isTampered ? '#e11d48' : '#059669';
     const statusText = isTampered ? 'TAMPERING DETECTED' : 'NOMINAL INTEGRITY FEED';
@@ -494,7 +558,7 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
         <div className="flex items-center gap-3 text-xs font-mono text-slate-400">
           <span className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 flex items-center gap-2">
             <Clock className="w-3.5 h-3.5 text-blue-400" />
-            <span>07:45 PM | May 24, 2025</span>
+            <span>{activePrediction ? new Date(activePrediction.timestamp).toLocaleString() : 'Awaiting analysis'}</span>
           </span>
         </div>
       </div>
@@ -517,11 +581,19 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
             onClick={() => setIsVideoPlayerOpen(true)}
             className="relative w-full h-64 sm:h-72 rounded-2xl overflow-hidden bg-slate-900 border border-white/10 group shadow-2xl cursor-pointer"
           >
-            <img 
-              src={cameraData.imageUrl} 
-              alt="Source Frame" 
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            />
+            {displaySnapshotUrl ? (
+              <img 
+                src={displaySnapshotUrl} 
+                alt="Source Frame" 
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-slate-950">
+                <span className="text-[10px] font-mono text-slate-500 px-4 text-center">
+                  No screenshot captured yet — run a live analysis or upload footage.
+                </span>
+              </div>
+            )}
             {/* Expand Icon Overlay Button at top right of image */}
             <button 
               onClick={(e) => {
@@ -1186,11 +1258,17 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
 
             {/* Video Player Display Area */}
             <div className="relative w-full aspect-video bg-black overflow-hidden group">
+              {displaySnapshotUrl ? (
               <img 
-                src={cameraData.imageUrl} 
+                src={displaySnapshotUrl} 
                 alt="Footage Playback"
                 className="w-full h-full object-cover contrast-[1.05]"
               />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-slate-950">
+                  <span className="text-xs font-mono text-slate-500">No snapshot available</span>
+                </div>
+              )}
               
               {/* Status HUD Watermark */}
               <div className="absolute top-4 left-4 px-3 py-1.5 rounded-xl bg-black/70 backdrop-blur-md border border-white/15 flex items-center gap-2 text-xs font-mono z-10">
@@ -1284,11 +1362,17 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
                 
                 {/* Large Frame Image */}
                 <div className="lg:col-span-8 h-64 sm:h-80 rounded-2xl overflow-hidden bg-slate-950 border border-white/15 relative group shadow-2xl">
+                  {displaySnapshotUrl ? (
                   <img 
-                    src={cameraData.imageUrl} 
+                    src={displaySnapshotUrl} 
                     alt="Selected frame preview"
                     className="w-full h-full object-cover saturate-[0.9] contrast-[1.1]"
                   />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-slate-950">
+                      <span className="text-xs font-mono text-slate-500">No keyframe captured</span>
+                    </div>
+                  )}
                   
                   <div className="absolute top-3 left-3 px-3 py-1 rounded-xl bg-black/80 border border-white/20 text-xs font-mono text-white font-bold flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-amber-400" />
@@ -1323,30 +1407,34 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
                     </div>
 
                     <div className="flex justify-between py-1 border-b border-white/5">
-                      <span className="text-slate-400">FFT Frequency</span>
-                      <span className="font-bold text-cyan-300">
-                        {selectedFrameIdx === 2 && isTampered ? '320 Hz (Peak Anomaly)' : '120 Hz (Baseline)'}
-                      </span>
+                      <span className="text-slate-400">FFT High Ratio</span>
+                      <span className="font-bold text-cyan-300">{fmt(fftHigh)}</span>
                     </div>
 
                     <div className="flex justify-between py-1 border-b border-white/5">
-                      <span className="text-slate-400">Noise Floor</span>
-                      <span className="font-bold text-white">
-                        {selectedFrameIdx === 2 && isTampered ? '4.820 dB (High Noise)' : '0.014 dB (Normal)'}
-                      </span>
+                      <span className="text-slate-400">Shannon Entropy</span>
+                      <span className="font-bold text-white">{fmt(entropy, 4)}</span>
                     </div>
 
                     <div className="flex justify-between py-1 border-b border-white/5">
-                      <span className="text-slate-400">Sub-pixel Delta</span>
-                      <span className="font-bold text-white">
-                        {selectedFrameIdx === 2 && isTampered ? '0.842 px' : '0.012 px'}
-                      </span>
+                      <span className="text-slate-400">Laplacian Variance</span>
+                      <span className="font-bold text-white">{fmt(lapVar, 2)}</span>
+                    </div>
+
+                    <div className="flex justify-between py-1 border-b border-white/5">
+                      <span className="text-slate-400">Edge Density</span>
+                      <span className="font-bold text-white">{fmt(edgeDensity, 4)}</span>
+                    </div>
+
+                    <div className="flex justify-between py-1 border-b border-white/5">
+                      <span className="text-slate-400">Temporal Difference</span>
+                      <span className="font-bold text-white">{fmt(temporalDiff, 4)}</span>
                     </div>
 
                     <div className="flex justify-between py-1">
                       <span className="text-slate-400">Confidence</span>
                       <span className={`font-bold ${selectedFrameIdx === 2 && isTampered ? 'text-rose-400' : 'text-emerald-400'}`}>
-                        {selectedFrameIdx === 2 && isTampered ? '98.6%' : '99.4%'}
+                        {activePrediction ? `${(displayConfidence * 100).toFixed(1)}%` : '—'}
                       </span>
                     </div>
                   </div>
@@ -1380,11 +1468,17 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
                       }`}
                     >
                       <div className="w-full h-20 rounded-xl overflow-hidden bg-slate-950 mb-2 relative">
+                        {displaySnapshotUrl ? (
                         <img 
-                          src={cameraData.imageUrl} 
+                          src={displaySnapshotUrl} 
                           alt={`Frame ${frame.num}`} 
                           className="w-full h-full object-cover saturate-[0.85]"
                         />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-slate-950">
+                            <span className="text-[9px] font-mono text-slate-600">—</span>
+                          </div>
+                        )}
                         <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/80 text-[9px] font-mono text-white">
                           #{frame.num}
                         </span>
@@ -1862,7 +1956,9 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
                         isTampered ? 'bg-rose-600 text-white' : 'bg-cyan-600 text-white'
                       }`}
                     >
-                      {isTampered ? 'Anomaly Peak (320Hz • 0.95 Mag)' : 'Harmonics Nominal (120Hz • 0.62 Mag)'}
+                      {isTampered
+                        ? `Anomaly Peak (FFT High ${fmt(fftHigh)} • Energy ${fmt(logEnergy, 2)})`
+                        : `Harmonics Nominal (FFT Mid ${fmt(fftMid)} • Energy ${fmt(logEnergy, 2)})`}
                     </div>
                   )}
                 </div>
@@ -1877,32 +1973,36 @@ export const PredictionAnalysisView: React.FC<PredictionAnalysisViewProps> = ({
                 </div>
               </div>
 
-              {/* Band breakdown stats */}
+              {/* Band breakdown stats (REAL FFT ratios from the CV engine) */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10 font-mono text-xs space-y-1">
-                  <span className="text-slate-400 block">Low Freq (0 - 100Hz)</span>
-                  <span className="text-lg font-bold text-white block">0.240 Mag</span>
-                  <span className="text-[10px] text-emerald-400">Baseline Pass</span>
-                </div>
-
-                <div className="p-4 rounded-xl bg-white/5 border border-white/10 font-mono text-xs space-y-1">
-                  <span className="text-slate-400 block">Mid Freq (100 - 300Hz)</span>
-                  <span className="text-lg font-bold text-white block">
-                    {isTampered ? '0.890 Mag' : '0.620 Mag'}
-                  </span>
-                  <span className={`text-[10px] ${isTampered ? 'text-rose-400' : 'text-emerald-400'}`}>
-                    {isTampered ? 'High Energy Spike' : 'Nominal Power'}
+                  <span className="text-slate-400 block">Low Freq Ratio</span>
+                  <span className="text-lg font-bold text-white block">{fmt(fftLow)}</span>
+                  <span className={`text-[10px] ${fftLow !== null && fftLow > 0.5 ? 'text-emerald-400' : 'text-slate-400'}`}>
+                    {fftLow === null ? 'Awaiting inference' : 'Baseline energy share'}
                   </span>
                 </div>
 
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10 font-mono text-xs space-y-1">
-                  <span className="text-slate-400 block">High Freq (300 - 500Hz)</span>
-                  <span className="text-lg font-bold text-white block">
-                    {isTampered ? '0.950 Mag' : '0.110 Mag'}
-                  </span>
+                  <span className="text-slate-400 block">Mid Freq Ratio</span>
+                  <span className="text-lg font-bold text-white block">{fmt(fftMid)}</span>
                   <span className={`text-[10px] ${isTampered ? 'text-rose-400' : 'text-emerald-400'}`}>
-                    {isTampered ? 'Distortion Peak (320Hz)' : 'Noise Floor Normal'}
+                    {isTampered ? 'Elevated mid-band energy' : 'Nominal mid-band power'}
                   </span>
+                </div>
+
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10 font-mono text-xs space-y-1">
+                  <span className="text-slate-400 block">High Freq Ratio</span>
+                  <span className="text-lg font-bold text-white block">{fmt(fftHigh)}</span>
+                  <span className={`text-[10px] ${isTampered ? 'text-rose-400' : 'text-emerald-400'}`}>
+                    {isTampered ? 'Distortion signature' : 'Noise floor nominal'}
+                  </span>
+                </div>
+
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10 font-mono text-xs space-y-1 col-span-1 sm:col-span-3">
+                  <span className="text-slate-400 block">Log Total Spectral Energy</span>
+                  <span className="text-lg font-bold text-white block">{fmt(logEnergy, 2)}</span>
+                  <span className="text-[10px] text-slate-400">Real value from the physics inference engine</span>
                 </div>
               </div>
 

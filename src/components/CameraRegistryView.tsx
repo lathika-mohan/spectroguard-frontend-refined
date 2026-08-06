@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { CameraFeedItem } from '../types';
 import { GlassPressCard } from './GlassPressCard';
+import { apiBlob } from '../api/client';
 import { 
   Search, 
   Maximize2, 
@@ -11,38 +12,78 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Star,
-  ShieldCheck
+  ShieldCheck,
+  Play
 } from 'lucide-react';
 
 interface CameraRegistryViewProps {
   cameras: CameraFeedItem[];
   selectedCameraId?: string;
   onSelectCamera?: (cameraId: string) => void;
+  onInspectFeed?: (camera: CameraFeedItem) => void;
 }
 
 export const CameraRegistryView: React.FC<CameraRegistryViewProps> = ({
   cameras,
   selectedCameraId,
-  onSelectCamera
+  onSelectCamera,
+  onInspectFeed
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [locationFilter, setLocationFilter] = useState('All Locations');
   const [integrityFilter, setIntegrityFilter] = useState('All Integrity');
   const [activeCamId, setActiveCamId] = useState<string>(
-    selectedCameraId || (cameras.length > 0 ? cameras[0].id : 'CAM-001')
+    selectedCameraId || (cameras.length > 0 ? cameras[0].id : '')
   );
-  const [starredIds, setStarredIds] = useState<string[]>(['CAM-001', 'CAM-009']);
+  const [starredIds, setStarredIds] = useState<string[]>([]);
+  const [liveFrameUrl, setLiveFrameUrl] = useState<string>('');
+  const frameKey = useRef(0);
 
   // Update active camera if prop changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedCameraId) {
       setActiveCamId(selectedCameraId);
+    } else if (cameras.length > 0 && !activeCamId) {
+      setActiveCamId(cameras[0].id);
     }
-  }, [selectedCameraId]);
+  }, [selectedCameraId, cameras, activeCamId]);
+
+  // Real live thumbnail for the inspector panel (fetched with auth).
+  const fetchLiveFrame = useCallback(async () => {
+    const key = ++frameKey.current;
+    try {
+      const blob = await apiBlob('/camera/frame');
+      if (frameKey.current === key) {
+        setLiveFrameUrl(URL.createObjectURL(blob));
+      }
+    } catch {
+      if (frameKey.current === key) setLiveFrameUrl('');
+    }
+  }, []);
+
+  // Compute REAL aggregate metrics from the camera list.
+  const metrics = useCallback(() => {
+    const online = cameras.filter((c) => c.status === 'Online').length;
+    const tampered = cameras.filter((c) => c.integrityStatus === 'Tampered').length;
+    const investigating = cameras.filter((c) => c.integrityStatus === 'Investigating').length;
+    const offline = cameras.filter((c) => c.status === 'Offline').length;
+    const avgIntegrity = cameras.length
+      ? Math.round(cameras.reduce((sum, c) => sum + c.integrityScore, 0) / cameras.length)
+      : 0;
+    return { online, tampered, investigating, offline, avgIntegrity, total: cameras.length };
+  }, [cameras]);
+
+  const { online, tampered, investigating, offline, avgIntegrity, total } = metrics();
 
   // Find currently active camera for right inspector panel
-  const activeCamera = cameras.find((c) => c.id === activeCamId) || cameras[0];
+  const activeCamera = cameras.find((c) => c.id === activeCamId) || cameras[0] || null;
+
+  // Refresh the real live thumbnail whenever the inspected camera changes.
+  useEffect(() => {
+    setLiveFrameUrl('');
+    if (activeCamId) fetchLiveFrame();
+  }, [activeCamId, fetchLiveFrame]);
 
   // Filtered list
   const filteredCameras = cameras.filter((cam) => {
@@ -130,14 +171,16 @@ export const CameraRegistryView: React.FC<CameraRegistryViewProps> = ({
       {/* 1. Apple 3D Metric Glass Badges (5 Cards) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         
-        {/* Metric 1: System Integrity Gauge */}
+        {/* Metric 1: System Integrity Gauge (real avg) */}
         <GlassPressCard className="p-5 flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-xs text-slate-400 font-medium font-['SF_Pro_Text']">Network Integrity</span>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl sm:text-3xl font-extrabold text-white font-['SF_Pro_Display']">98%</span>
+              <span className="text-2xl sm:text-3xl font-extrabold text-white font-['SF_Pro_Display']">{avgIntegrity}%</span>
             </div>
-            <span className="text-[11px] font-bold text-emerald-400 font-mono tracking-wide">Nominal Status</span>
+            <span className="text-[11px] font-bold text-emerald-400 font-mono tracking-wide">
+              {avgIntegrity >= 80 ? 'Nominal Status' : avgIntegrity >= 50 ? 'Under Review' : 'Degraded'}
+            </span>
           </div>
 
           {/* 3D Circular Gauge */}
@@ -151,7 +194,7 @@ export const CameraRegistryView: React.FC<CameraRegistryViewProps> = ({
               />
               <path
                 stroke="url(#blueGrad)"
-                strokeDasharray="98, 100"
+                strokeDasharray={`${avgIntegrity}, 100`}
                 strokeWidth="3.5"
                 strokeLinecap="round"
                 fill="none"
@@ -163,7 +206,7 @@ export const CameraRegistryView: React.FC<CameraRegistryViewProps> = ({
           </div>
         </GlassPressCard>
 
-        {/* Metric 2: Active Feeds */}
+        {/* Metric 2: Active Feeds (real) */}
         <GlassPressCard className="p-5 flex flex-col justify-between space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs text-slate-400 font-medium font-['SF_Pro_Text']">Active Feeds</span>
@@ -172,16 +215,16 @@ export const CameraRegistryView: React.FC<CameraRegistryViewProps> = ({
             </div>
           </div>
           <div>
-            <span className="text-2xl sm:text-3xl font-extrabold text-white font-['SF_Pro_Display']">32</span>
+            <span className="text-2xl sm:text-3xl font-extrabold text-white font-['SF_Pro_Display']">{online}</span>
             <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400 mt-1">
-              <span className="text-emerald-400 font-semibold">28 Live</span>
+              <span className="text-emerald-400 font-semibold">{online} Live</span>
               <span>•</span>
-              <span className="text-rose-400 font-semibold">4 Off</span>
+              <span className="text-rose-400 font-semibold">{offline} Off</span>
             </div>
           </div>
         </GlassPressCard>
 
-        {/* Metric 3: Investigating */}
+        {/* Metric 3: Investigating (real) */}
         <GlassPressCard className="p-5 flex flex-col justify-between space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs text-slate-400 font-medium font-['SF_Pro_Text']">Investigating</span>
@@ -190,12 +233,14 @@ export const CameraRegistryView: React.FC<CameraRegistryViewProps> = ({
             </div>
           </div>
           <div>
-            <span className="text-2xl sm:text-3xl font-extrabold text-amber-400 font-['SF_Pro_Display']">6</span>
-            <p className="text-[11px] font-mono text-amber-300 font-medium mt-1">18.8% under review</p>
+            <span className="text-2xl sm:text-3xl font-extrabold text-amber-400 font-['SF_Pro_Display']">{investigating}</span>
+            <p className="text-[11px] font-mono text-amber-300 font-medium mt-1">
+              {total ? `${Math.round((investigating / total) * 100)}% under review` : 'No cameras registered'}
+            </p>
           </div>
         </GlassPressCard>
 
-        {/* Metric 4: Tampered Flags */}
+        {/* Metric 4: Tampered Flags (real) */}
         <GlassPressCard className="p-5 flex flex-col justify-between space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs text-slate-400 font-medium font-['SF_Pro_Text']">Tampered Flags</span>
@@ -204,12 +249,14 @@ export const CameraRegistryView: React.FC<CameraRegistryViewProps> = ({
             </div>
           </div>
           <div>
-            <span className="text-2xl sm:text-3xl font-extrabold text-rose-400 font-['SF_Pro_Display']">2</span>
-            <p className="text-[11px] font-mono text-rose-400 font-semibold mt-1">Physical occlusion</p>
+            <span className="text-2xl sm:text-3xl font-extrabold text-rose-400 font-['SF_Pro_Display']">{tampered}</span>
+            <p className="text-[11px] font-mono text-rose-400 font-semibold mt-1">
+              {tampered ? 'Screenshots captured' : 'All feeds nominal'}
+            </p>
           </div>
         </GlassPressCard>
 
-        {/* Metric 5: Signal Disconnected */}
+        {/* Metric 5: Signal Disconnected (real) */}
         <GlassPressCard className="p-5 flex flex-col justify-between space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs text-slate-400 font-medium font-['SF_Pro_Text']">Disconnected</span>
@@ -218,7 +265,7 @@ export const CameraRegistryView: React.FC<CameraRegistryViewProps> = ({
             </div>
           </div>
           <div>
-            <span className="text-2xl sm:text-3xl font-extrabold text-slate-300 font-['SF_Pro_Display']">4</span>
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-300 font-['SF_Pro_Display']">{offline}</span>
             <p className="text-[11px] font-mono text-slate-400 font-medium mt-1">Check cable link</p>
           </div>
         </GlassPressCard>
@@ -296,13 +343,19 @@ export const CameraRegistryView: React.FC<CameraRegistryViewProps> = ({
           {filteredCameras.length === 0 ? (
             <GlassPressCard className="p-12 text-center space-y-4">
               <Video className="w-10 h-10 text-slate-500 mx-auto" />
-              <p className="text-slate-300 text-sm font-medium">No cameras match your current filter parameters.</p>
-              <button
-                onClick={handleResetFilters}
-                className="px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-xs font-bold"
-              >
-                Reset Filters
-              </button>
+              <p className="text-slate-300 text-sm font-medium">
+                {cameras.length === 0
+                  ? 'No cameras registered yet. Connect a camera in the SpectraGuard GUI (or press Start Analysis) — it will appear here with its real name and telemetry.'
+                  : 'No cameras match your current filter parameters.'}
+              </p>
+              {cameras.length > 0 && (
+                <button
+                  onClick={handleResetFilters}
+                  className="px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-xs font-bold"
+                >
+                  Reset Filters
+                </button>
+              )}
             </GlassPressCard>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -438,6 +491,14 @@ export const CameraRegistryView: React.FC<CameraRegistryViewProps> = ({
 
         {/* Right Column: Camera Detail Inspector Panel */}
         <div className="lg:col-span-4 sticky top-20">
+          {!activeCamera ? (
+            <GlassPressCard className="p-8 text-center space-y-3">
+              <Video className="w-8 h-8 text-slate-600 mx-auto" />
+              <p className="text-xs text-slate-400 font-mono">
+                No camera selected. Connect a camera in the SpectraGuard GUI or press Start Analysis to register one.
+              </p>
+            </GlassPressCard>
+          ) : (
           <GlassPressCard className="p-6 space-y-6 shadow-2xl">
             
             {/* Inspector Header */}
@@ -461,22 +522,37 @@ export const CameraRegistryView: React.FC<CameraRegistryViewProps> = ({
               </span>
             </div>
 
-            {/* Live Camera Feed Preview Box */}
+            {/* Live Camera Feed Preview Box (real frame from the CV Engine) */}
             <div className="w-full h-52 rounded-2xl overflow-hidden bg-slate-900 relative border border-white/20 group shadow-2xl">
-              <img
-                src={activeCamera.imageUrl}
-                alt={activeCamera.name}
-                className="w-full h-full object-cover saturate-[0.85] contrast-[1.1]"
-              />
+              {liveFrameUrl ? (
+                <img
+                  src={liveFrameUrl}
+                  alt={activeCamera.name}
+                  className="w-full h-full object-cover saturate-[0.85] contrast-[1.1]"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-[radial-gradient(circle_at_50%_40%,rgba(29,78,216,0.12),transparent_60%)]">
+                  <span className="text-[10px] font-mono text-slate-500 px-4 text-center">
+                    LIVE FRAME UNAVAILABLE — camera not started
+                  </span>
+                </div>
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 pointer-events-none" />
 
-              {/* Timestamp tag & Fullscreen button */}
+              {/* Timestamp tag & refresh button */}
               <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-md text-xs font-mono font-bold text-white flex items-center gap-2 border border-white/10">
-                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                <span className={`w-2 h-2 rounded-full ${liveFrameUrl ? 'bg-rose-500 animate-pulse' : 'bg-slate-500'}`} />
                 <span>{activeCamera.timestamp}</span>
               </div>
 
-              <button className="absolute bottom-3 right-3 p-2 rounded-xl bg-black/60 hover:bg-black/90 backdrop-blur-md text-white transition-colors cursor-pointer border border-white/10">
+              <button
+                onClick={() => {
+                  setLiveFrameUrl('');
+                  fetchLiveFrame();
+                }}
+                title="Refresh live frame"
+                className="absolute bottom-3 right-3 p-2 rounded-xl bg-black/60 hover:bg-black/90 backdrop-blur-md text-white transition-colors cursor-pointer border border-white/10"
+              >
                 <Maximize2 className="w-4 h-4" />
               </button>
             </div>
@@ -604,21 +680,30 @@ export const CameraRegistryView: React.FC<CameraRegistryViewProps> = ({
 
             {/* Action Buttons */}
             <div className="grid grid-cols-2 gap-3 pt-2">
-              <button 
-                onClick={() => alert(`Inspecting ${activeCamera.name} camera stream...`)}
-                className="px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-all shadow-lg shadow-blue-900/40 cursor-pointer font-['SF_Pro_Text']"
+              <button
+                onClick={() => {
+                  if (onInspectFeed) {
+                    onInspectFeed(activeCamera);
+                  } else {
+                    // No handler provided (e.g. standalone): navigate to live GUI.
+                    window.location.href = `/live?cameraId=${encodeURIComponent(activeCamera.id)}&name=${encodeURIComponent(activeCamera.name)}`;
+                  }
+                }}
+                className="px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-all shadow-lg shadow-blue-900/40 cursor-pointer font-['SF_Pro_Text'] flex items-center justify-center gap-1.5"
               >
+                <Play className="w-3.5 h-3.5" />
                 Inspect Feed
               </button>
-              <button 
-                onClick={() => alert(`Exporting report for ${activeCamera.id}...`)}
+              <button
+                onClick={() => onInspectFeed?.(activeCamera)}
                 className="px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 border border-white/15 font-semibold text-xs transition-all cursor-pointer font-['SF_Pro_Text']"
               >
-                Export Report
+                Start Analysis
               </button>
             </div>
 
           </GlassPressCard>
+          )}
         </div>
 
       </div>

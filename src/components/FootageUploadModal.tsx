@@ -19,6 +19,8 @@ interface FootageUploadModalProps {
   fileName: string | null;
   fileObj: File | null;
   onRunPrediction: (predictionId: string) => void;
+  /** New: clicking "Start Analysis" in Live mode loads the camera GUI. */
+  onStartLiveAnalysis?: (cameraName: string) => void;
 }
 
 export const FootageUploadModal: React.FC<FootageUploadModalProps> = ({
@@ -26,9 +28,11 @@ export const FootageUploadModal: React.FC<FootageUploadModalProps> = ({
   onClose,
   fileName,
   fileObj,
-  onRunPrediction
+  onRunPrediction,
+  onStartLiveAnalysis
 }) => {
   const [footageName, setFootageName] = useState<string>('');
+  const [mode, setMode] = useState<'upload' | 'live'>('upload');
   const [locationZone, setLocationZone] = useState<string>('Main Building');
   const [customLocationZone, setCustomLocationZone] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
@@ -194,6 +198,36 @@ export const FootageUploadModal: React.FC<FootageUploadModalProps> = ({
           </button>
         </div>
 
+        {/* Mode Toggle: Upload Footage OR Live Camera (Start Analysis -> GUI) */}
+        <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-white/5 border border-white/10">
+          <button
+            type="button"
+            onClick={() => setMode('upload')}
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              mode === 'upload'
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span className="flex items-center justify-center gap-1.5">
+              <Video className="w-3.5 h-3.5" /> Upload Footage
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('live')}
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              mode === 'live'
+                ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-900/40'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span className="flex items-center justify-center gap-1.5">
+              <Play className="w-3.5 h-3.5" /> Live Camera
+            </span>
+          </button>
+        </div>
+
         {/* Warning Alert Banner */}
         {errorMessage && (
           <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-400 font-semibold animate-fadeIn">
@@ -201,8 +235,20 @@ export const FootageUploadModal: React.FC<FootageUploadModalProps> = ({
           </div>
         )}
 
-        {/* File Dropzone/Loader */}
-        {!selectedFile ? (
+        {/* Live Camera Mode: banner instead of dropzone */}
+        {mode === 'live' ? (
+          <div className="p-5 rounded-xl border border-cyan-500/25 bg-cyan-950/20 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
+              <Play className="w-5 h-5" />
+            </div>
+            <div className="text-xs text-slate-300 leading-relaxed">
+              <p className="font-bold text-white font-['SF_Pro_Display']">Start Analysis loads the live camera GUI.</p>
+              <p className="text-slate-400 font-mono text-[10px] mt-0.5">
+                The CV Engine opens the camera, streams frames, and captures a tamper screenshot that appears on the Predict page.
+              </p>
+            </div>
+          </div>
+        ) : !selectedFile ? (
           <div 
             className="p-6 rounded-xl border border-dashed border-white/25 bg-white/5 hover:bg-white/10 hover:border-blue-500/40 transition-all flex flex-col items-center justify-center text-center cursor-pointer space-y-2"
             onClick={() => fileInputRef.current?.click()}
@@ -332,15 +378,40 @@ export const FootageUploadModal: React.FC<FootageUploadModalProps> = ({
             Cancel
           </button>
 
-          <button
-            type="button"
-            onClick={handleStartAnalysis}
-            disabled={isAnalyzing || !selectedFile || !footageName.trim()}
-            className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-blue-900/40 cursor-pointer font-['SF_Pro_Text'] disabled:cursor-not-allowed"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
-            <span>{isAnalyzing ? 'Analyzing Footage...' : 'Run Prediction'}</span>
-          </button>
+          {mode === 'live' ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (isAnalyzing) return;
+                if (!footageName.trim()) {
+                  setErrorMessage('Please enter a camera name before starting live analysis.');
+                  return;
+                }
+                setIsAnalyzing(true);
+                setStatusMessage('Opening live camera GUI...');
+                setTimeout(() => {
+                  setIsAnalyzing(false);
+                  onClose();
+                  onStartLiveAnalysis?.(footageName.trim());
+                }, 400);
+              }}
+              disabled={isAnalyzing}
+              className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-cyan-900/40 cursor-pointer font-['SF_Pro_Text'] disabled:cursor-not-allowed"
+            >
+              <Play className="w-3.5 h-3.5 text-white" />
+              <span>{isAnalyzing ? 'Loading GUI...' : 'Start Analysis'}</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleStartAnalysis}
+              disabled={isAnalyzing || !selectedFile || !footageName.trim()}
+              className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-blue-900/40 cursor-pointer font-['SF_Pro_Text'] disabled:cursor-not-allowed"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
+              <span>{isAnalyzing ? 'Analyzing Footage...' : 'Run Prediction'}</span>
+            </button>
+          )}
         </div>
 
       </div>

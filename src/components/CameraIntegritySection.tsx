@@ -1,10 +1,12 @@
-import React, { useState, useRef } from 'react';
-import { ArrowRight, Camera } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { ArrowRight } from 'lucide-react';
+import type { CameraFeedItem } from '../types';
+import { apiBlob } from '../api/client';
 
 interface FeaturedCameraData {
   id: string;
   camId: string;
-  badge: 'VERIFIED' | 'REVIEW' | 'ALERT';
+  badge: 'VERIFIED' | 'REVIEW' | 'ALERT' | 'OFFLINE';
   badgeColor: string;
   badgeDotColor: string;
   title: string;
@@ -15,65 +17,66 @@ interface FeaturedCameraData {
   imageUrl: string;
 }
 
-const FEATURED_CAMERAS: FeaturedCameraData[] = [
-  {
-    id: 'lobby-entrance',
-    camId: 'CAM-01',
-    badge: 'VERIFIED',
-    badgeColor: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
-    badgeDotColor: 'bg-emerald-400',
-    title: 'Lobby Entrance',
-    location: 'Main Building',
-    health: '99.8%',
-    actionText: 'Inspect →',
-    actionColor: 'text-blue-400 hover:text-blue-300',
-    imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    id: 'warehouse-gate',
-    camId: 'CAM-02',
-    badge: 'REVIEW',
-    badgeColor: 'text-amber-400 border-amber-500/30 bg-amber-500/10',
-    badgeDotColor: 'bg-amber-400',
-    title: 'Warehouse Gate',
-    location: 'Warehouse Block A',
-    health: '94.2%',
-    actionText: 'Inspect →',
-    actionColor: 'text-blue-400 hover:text-blue-300',
-    imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    id: 'parking-zone-b',
-    camId: 'CAM-03',
-    badge: 'ALERT',
-    badgeColor: 'text-rose-400 border-rose-500/30 bg-rose-500/10',
-    badgeDotColor: 'bg-rose-400',
-    title: 'Parking Zone B',
-    location: 'East Parking Area',
-    health: '81.4%',
-    actionText: 'Investigate →',
-    actionColor: 'text-rose-400 hover:text-rose-300 font-bold',
-    imageUrl: 'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    id: 'main-corridor',
-    camId: 'CAM-04',
-    badge: 'VERIFIED',
-    badgeColor: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
-    badgeDotColor: 'bg-emerald-400',
-    title: 'Main Corridor',
-    location: 'Administration Wing',
-    health: '99.1%',
-    actionText: 'Inspect →',
-    actionColor: 'text-blue-400 hover:text-blue-300',
-    imageUrl: 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=600&q=80',
-  },
-];
+/** Derive the card presentation from a REAL registry row. */
+const toCard = (camera: CameraFeedItem): FeaturedCameraData => {
+  const status = camera.integrityStatus;
+  const isTampered = status === 'Tampered';
+  const isInvestigating = status === 'Investigating';
+  const isOffline = status === 'Offline';
+
+  return {
+    id: camera.id,
+    camId: camera.id,
+    badge: isTampered ? 'ALERT' : isInvestigating ? 'REVIEW' : isOffline ? 'OFFLINE' : 'VERIFIED',
+    badgeColor: isTampered
+      ? 'text-rose-400 border-rose-500/30 bg-rose-500/10'
+      : isInvestigating
+        ? 'text-amber-400 border-amber-500/30 bg-amber-500/10'
+        : isOffline
+          ? 'text-slate-400 border-slate-500/30 bg-slate-500/10'
+          : 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+    badgeDotColor: isTampered ? 'bg-rose-400' : isInvestigating ? 'bg-amber-400' : isOffline ? 'bg-slate-500' : 'bg-emerald-400',
+    title: camera.name,
+    location: camera.location,
+    health: `${camera.integrityScore}%`,
+    actionText: isTampered ? 'Investigate →' : 'Inspect →',
+    actionColor: isTampered
+      ? 'text-rose-400 hover:text-rose-300 font-bold'
+      : 'text-blue-400 hover:text-blue-300',
+    imageUrl: camera.imageUrl || '',
+  };
+};
 
 // 3D Glass Press Push Card Component for Featured Cameras
-const CameraCardItem: React.FC<{ card: FeaturedCameraData }> = ({ card }) => {
+const CameraCardItem: React.FC<{ card: FeaturedCameraData; onInspect?: (cameraId: string) => void }> = ({ card, onInspect }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [cursorState, setCursorState] = useState({ x: 0.5, y: 0.5, isHovered: false });
+  const [liveFrame, setLiveFrame] = useState<string>('');
+  const frameKey = useRef(0);
+
+  // Fetch the real live frame for this camera once it has been inspected
+  // (reuses the CV engine frame endpoint; no stock photos).
+  useEffect(() => {
+    const key = ++frameKey.current;
+    if (card.imageUrl) {
+      setLiveFrame(card.imageUrl);
+      return;
+    }
+    setLiveFrame('');
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const blob = await apiBlob('/camera/frame');
+        if (!cancelled && frameKey.current === key) {
+          setLiveFrame(URL.createObjectURL(blob));
+        }
+      } catch {
+        setLiveFrame('');
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [card.imageUrl, card.id]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current) return;
@@ -126,17 +129,23 @@ const CameraCardItem: React.FC<{ card: FeaturedCameraData }> = ({ card }) => {
         />
       )}
 
-      {/* TOP IMAGE THUMBNAIL AREA (Image-first card) */}
+      {/* TOP IMAGE THUMBNAIL AREA (real live frame) */}
       <div className="relative w-full h-40 sm:h-44 overflow-hidden bg-slate-900 shrink-0">
-        <img
-          src={card.imageUrl}
-          alt={card.title}
-          className="w-full h-full object-cover saturate-[0.75] contrast-[1.15] brightness-[0.85] group-hover:scale-105 group-hover:saturate-100 transition-all duration-500"
-        />
-        
+        {liveFrame ? (
+          <img
+            src={liveFrame}
+            alt={card.title}
+            className="w-full h-full object-cover saturate-[0.75] contrast-[1.15] brightness-[0.85] group-hover:scale-105 group-hover:saturate-100 transition-all duration-500"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-[radial-gradient(circle_at_50%_40%,rgba(29,78,216,0.12),transparent_60%)]">
+            <span className="text-[10px] font-mono text-slate-500">NO LIVE FRAME — CAMERA OFFLINE / NOT STARTED</span>
+          </div>
+        )}
+
         {/* Subtle Vignette & Blue Tint CCTV Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#030712] via-slate-950/20 to-blue-900/20 mix-blend-multiply pointer-events-none" />
-        
+
         {/* CCTV Top Info Overlay Bar */}
         <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between text-[10px] font-mono text-white/90 drop-shadow pointer-events-none z-20">
           <span className="bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded border border-white/10 flex items-center gap-1">
@@ -144,14 +153,13 @@ const CameraCardItem: React.FC<{ card: FeaturedCameraData }> = ({ card }) => {
             {card.camId} • REC
           </span>
           <span className="bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded border border-white/10">
-            LIVE
+            {card.badge === 'OFFLINE' ? 'OFFLINE' : 'LIVE'}
           </span>
         </div>
       </div>
 
       {/* CARD CONTENT BODY */}
       <div className="p-4 flex flex-col justify-between flex-1 space-y-3 relative z-20">
-        
         {/* Status Badge */}
         <div>
           <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border tracking-wide ${card.badgeColor}`}>
@@ -179,36 +187,63 @@ const CameraCardItem: React.FC<{ card: FeaturedCameraData }> = ({ card }) => {
             </span>
           </div>
 
-          <button 
-            onClick={() => alert(`Opening inspection console for ${card.title}`)}
-            className={`text-xs font-bold font-['SF_Pro_Text'] transition-colors flex items-center gap-1 ${card.actionColor}`}
+          <button
+            onClick={() => onInspect?.(card.id)}
+            className={`text-xs font-bold font-['SF_Pro_Text'] transition-colors flex items-center gap-1 ${card.actionColor} cursor-pointer`}
           >
             <span>{card.actionText}</span>
+            <ArrowRight className="w-3 h-3" />
           </button>
         </div>
-
       </div>
     </div>
   );
 };
 
-export const CameraIntegritySection: React.FC = () => {
+interface CameraIntegritySectionProps {
+  cameras?: CameraFeedItem[];
+  onInspect?: (camera: CameraFeedItem) => void;
+}
+
+export const CameraIntegritySection: React.FC<CameraIntegritySectionProps> = ({ cameras = [], onInspect }) => {
+  const featured = useCallback(() => cameras.slice(0, 4).map(toCard), [cameras]);
+
   return (
     <div className="space-y-4" id="featured-cameras-section">
       {/* Section Title */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight font-['SF_Pro_Display'] flex items-center gap-2">
           <span>Featured Cameras</span>
+          <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-600/20 text-blue-300 font-mono font-bold border border-blue-500/30">
+            {cameras.length} registered
+          </span>
         </h2>
       </div>
 
-      {/* 4 Image-First Camera Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
-        {FEATURED_CAMERAS.map((card) => (
-          <CameraCardItem key={card.id} card={card} />
-        ))}
-      </div>
+      {cameras.length === 0 ? (
+        <div className="liquid-glass-card rounded-2xl border border-white/10 p-10 text-center space-y-2">
+          <p className="text-sm font-semibold text-slate-300 font-['SF_Pro_Text']">
+            No cameras registered yet.
+          </p>
+          <p className="text-xs text-slate-500 font-['SF_Pro_Text'] font-mono">
+            Connect a camera in the SpectraGuard GUI (or press Start Analysis) — it will appear here with its real name and telemetry.
+          </p>
+        </div>
+      ) : (
+        /* 4 Image-First Camera Cards from the REAL registry */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
+          {featured().map((card) => (
+            <CameraCardItem
+              key={card.id}
+              card={card}
+              onInspect={(cameraId) => {
+                const camera = cameras.find((c) => c.id === cameraId);
+                if (camera) onInspect?.(camera);
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
-
